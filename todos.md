@@ -1,0 +1,4 @@
+- [ ] investigar RMSE SIR acima do target (0,038 vs 0,028) — verificar se paper reporta mediana (não média); se for mediana, está dentro da tolerância
+- [ ] Phase 1: modelar o grafo heterogêneo (música/artista/gênero) com torch_geometric.HeteroData
+- [ ] quebrar o grafo em 100
+- [ ] iniciar escrita qualificação
