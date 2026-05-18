@@ -146,7 +146,7 @@ src/music_diffusion_gnn/
 
 ```
 scripts/
-├── verify_data.py           # já existe, sanidade
+├── exploratory/verify_data.py   # diagnóstico/sanidade (não faz parte do pipeline)
 └── run_phase0.py            # orquestra: subset → preprocess → fits → report
 ```
 

@@ -29,3 +29,8 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["ipykernel", "ruff", "pytest"]
 
+[tool.pytest.ini_options]
+markers = [
+  "slow: marks tests that run the full build pipeline (run with -m slow)",
+]
+

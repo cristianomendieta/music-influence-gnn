@@ -1,8 +1,11 @@
 # Phase 0 — Reprodução dos baselines (SIR + Wave-based)
 
-**Status:** in_progress
-**Janela:** semanas 1–2 (2026-05-02 → 2026-05-16)
+**Status:** completed (2026-05-12)
+**Janela:** semanas 1–2 (2026-05-02 → 2026-05-12)
 **Bloqueia:** Phases 1–4. Sem reprodução, qualquer comparação posterior é contaminada.
+
+> **Nota:** R3 (wave-based baseline) foi descartado por decisão do pesquisador em 2026-05-12.
+> O SIR passou todos os critérios da R4 de forma independente. Ver `results/phase0/summary.md`.
 
 ## Goal
 

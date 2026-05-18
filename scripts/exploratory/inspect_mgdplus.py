@@ -2,7 +2,7 @@
 Inspect MGDplus.zip, validate chart data quality, and decide replacement strategy.
 
 Usage:
-    python scripts/inspect_mgdplus.py
+    python scripts/exploratory/inspect_mgdplus.py
 """
 from __future__ import annotations
 

@@ -1,7 +1,7 @@
 """
 Carga e verificacao do dataset combinado (Kaggle charts + MGD+ features).
 
-Roda como: python scripts/verify_data.py
+Roda como: python scripts/exploratory/verify_data.py
 
 Faz:
   1. Carrega Top 200 + Viral 50 BR (Kaggle dhruvildave/spotify-charts)
