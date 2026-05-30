@@ -17,15 +17,17 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 # Temporal split boundaries (derived from ROADMAP dates)
 # ---------------------------------------------------------------------------
-_TRAIN_END_DATE = "2020-06-30"   # inclusive
-_VAL_START_DATE = "2020-07-01"
-_VAL_END_DATE   = "2020-12-31"   # inclusive
-_TEST_START_DATE = "2021-01-01"
-
-TRAIN_END_WEEK  = week_index(_TRAIN_END_DATE)   # 183
-VAL_START_WEEK  = week_index(_VAL_START_DATE)   # 184
-VAL_END_WEEK    = week_index(_VAL_END_DATE)     # 208
-TEST_START_WEEK = week_index(_TEST_START_DATE)  # 208 → first 2021-W1
+# Note: the formula (iso_year - 2017)*52 + (iso_week - 1) is not bijective
+# for years with 53 ISO weeks (e.g. 2020). The dates 2020-06-30 and
+# 2020-07-01 both map to week 182; 2020-12-31 and 2021-01-01 both map to
+# 208. We therefore define a clean 3-way partition using TRAIN_END and
+# TEST_START as the two boundary weeks and assign each week to exactly one
+# split (val = strictly between boundaries).
+TRAIN_END_WEEK  = week_index("2020-06-30")   # 182  (ISO 2020-W27)
+TEST_START_WEEK = week_index("2020-12-31")   # 208  (ISO 2020-W53 / 2021-W01)
+# train : week <= 182
+# val   : 183 <= week <= 207
+# test  : week >= 208
 
 
 # ---------------------------------------------------------------------------
@@ -83,12 +85,15 @@ def temporal_split(weekly_df: pd.DataFrame) -> dict[str, pd.DataFrame]:
     """
     train = weekly_df[weekly_df["week"] <= TRAIN_END_WEEK].copy()
     val   = weekly_df[
-        (weekly_df["week"] >= VAL_START_WEEK) & (weekly_df["week"] <= VAL_END_WEEK)
+        (weekly_df["week"] > TRAIN_END_WEEK) & (weekly_df["week"] < TEST_START_WEEK)
     ].copy()
     test  = weekly_df[weekly_df["week"] >= TEST_START_WEEK].copy()
 
+    # Verify clean partition (no week appears in more than one split)
     assert set(train["week"].unique()).isdisjoint(set(val["week"].unique()))
     assert set(val["week"].unique()).isdisjoint(set(test["week"].unique()))
+    # Union covers all rows
+    assert len(train) + len(val) + len(test) == len(weekly_df)
 
     return {"train": train, "val": val, "test": test}
 
