@@ -151,41 +151,54 @@ def build_samples(
     # Index for fast lookup: (song_id, chart, week) → y_week
     weekly_indexed = weekly_df.set_index(["song_id", "chart", "week"])["y_week"]
 
+    # Validate all songs are in graph
+    missing = set(weekly_df["song_id"].unique()) - set(song_to_idx.keys())
+    assert not missing, (
+        f"{len(missing)} song_ids not in node_id_map — "
+        "C4 of Phase 1 should guarantee all subset songs are in the graph: "
+        f"{list(missing)[:5]}"
+    )
+
+    # Vectorized: add song_idx, chart_code, first_seen_week columns
+    df = weekly_df.copy()
+    df["song_idx"]   = df["song_id"].map(song_to_idx)
+    df["chart_code"] = df["chart"].map(_CHART_CODE)
+    df["fsw"]        = df.apply(lambda r: first_seen[(r["song_id"], r["chart"])], axis=1)
+
+    # Filter: target only for week > first_seen_week
+    df = df[df["week"] > df["fsw"]].copy()
+
+    # Build window columns (W offsets) as numpy arrays — avoids per-row Python loops
+    weeks_arr = df["week"].to_numpy()
+    fsw_arr   = df["fsw"].to_numpy()
+
+    # window_weeks[k] = w - (W - k), for k in 0..W-1
+    #   i.e. offsets: w-W, w-W+1, ..., w-1
+    offsets = np.arange(W, 0, -1)  # [W, W-1, ..., 1]
+    # Shape: (N, W)
+    wk_matrix = weeks_arr[:, None] - offsets[None, :]  # (N, W)
+
+    # Padding: where wk < fsw or wk < 0
+    fsw_matrix = fsw_arr[:, None]
+    pad_matrix = (wk_matrix < fsw_matrix) | (wk_matrix < 0)
+    # Replace padded positions with -1
+    wk_matrix[pad_matrix] = -1
+
+    # Build list of Samples
+    song_idx_arr  = df["song_idx"].to_numpy(dtype=np.int64)
+    chart_code_arr = df["chart_code"].to_numpy(dtype=np.int64)
+    target_week_arr = weeks_arr
+    y_arr = df["y_week"].to_numpy(dtype=np.float64)
+
     samples: list[Sample] = []
-    for (song_id, chart), group in weekly_df.groupby(["song_id", "chart"], observed=True):
-        assert song_id in song_to_idx, (
-            f"song_id={song_id!r} not found in node_id_map — "
-            "C4 of Phase 1 should guarantee all subset songs are in the graph"
-        )
-        song_idx = song_to_idx[song_id]
-        chart_code = _CHART_CODE[chart]
-        fsw = first_seen[(song_id, chart)]
-
-        for _, row in group.iterrows():
-            w = int(row["week"])
-            # Target only for weeks strictly after first_seen (need ≥1 week of history)
-            if w <= fsw:
-                continue
-
-            # Build look-back window [w-W, ..., w-1]
-            window_weeks: list[int] = []
-            pad_mask: list[bool] = []
-            for k in range(W, 0, -1):  # k=W down to 1 → index w-W, ..., w-1
-                wk = w - k
-                if wk < fsw or wk < 0:
-                    window_weeks.append(-1)
-                    pad_mask.append(True)
-                else:
-                    window_weeks.append(wk)
-                    pad_mask.append(False)
-
-            samples.append(Sample(
-                song_idx=song_idx,
-                chart=chart_code,
-                target_week=w,
-                window_weeks=window_weeks,
-                pad_mask=pad_mask,
-                y=float(row["y_week"]),
-            ))
+    for i in range(len(df)):
+        samples.append(Sample(
+            song_idx=int(song_idx_arr[i]),
+            chart=int(chart_code_arr[i]),
+            target_week=int(target_week_arr[i]),
+            window_weeks=wk_matrix[i].tolist(),
+            pad_mask=pad_matrix[i].tolist(),
+            y=float(y_arr[i]),
+        ))
 
     return samples
