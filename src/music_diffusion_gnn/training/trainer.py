@@ -37,7 +37,12 @@ class Config:
     max_epochs: int = 100
     patience: int = 10
     seed: int = 42
-    batch_size: int = 64
+    # Week-grouped batching: each sub-batch stays within one target_week so the
+    # encoder bank (W forward passes) is computed once per week and reused.
+    # Setting batch_size >= max samples per week (≈1756 for 1981 songs, W=4)
+    # means each week is processed as a single batch → 1 forward + 1 backward
+    # per week instead of n_sub × backward (no retain_graph overhead).
+    batch_size: int = 2048
     # Subsample cotrajectory edges per snapshot to this maximum.
     # Necessary when 664K edges exhaust autograd memory on CPU/WSL.
     max_cotraj_edges: int = 30_000

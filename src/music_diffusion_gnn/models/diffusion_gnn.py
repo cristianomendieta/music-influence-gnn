@@ -101,6 +101,9 @@ class MusicDiffusionGNN(nn.Module):
     ) -> Tensor:
         """Assemble window sequences and predict rank scores.
 
+        Uses vectorised advanced indexing (one tensor op per window position)
+        instead of per-sample Python loops — critical for large week-grouped batches.
+
         Args:
             bank: ``{week: Z_music}`` from ``encode_weeks``
             samples: list of Sample objects (same batch)
@@ -110,16 +113,31 @@ class MusicDiffusionGNN(nn.Module):
         """
         B = len(samples)
         W = len(samples[0].window_weeks)
+        dev = next(self.parameters()).device
 
-        # Build (B, W, hidden) sequence tensor and (B, W) pad mask
-        seq = torch.zeros(B, W, self.hidden, device=next(self.parameters()).device)
-        pad_mask = torch.zeros(B, W, dtype=torch.bool, device=seq.device)
+        song_idxs = torch.tensor([s.song_idx for s in samples], dtype=torch.long, device=dev)
 
-        for b, samp in enumerate(samples):
-            for t, (wk, is_pad) in enumerate(zip(samp.window_weeks, samp.pad_mask)):
-                pad_mask[b, t] = is_pad
-                if not is_pad:
-                    seq[b, t] = bank[wk][samp.song_idx]
+        seq_parts: list[Tensor] = []
+        pad_cols: list[Tensor] = []
+
+        for t in range(W):
+            # Pad mask column for position t (may differ per sample / first_seen_week)
+            pad_col = torch.tensor(
+                [s.pad_mask[t] for s in samples], dtype=torch.bool, device=dev
+            )
+            pad_cols.append(pad_col)
+
+            wk = samples[0].window_weeks[t]  # all samples in a week-grouped batch share window_weeks
+            if wk in bank and not pad_col.all():
+                # Vectorised advanced indexing: (B, hidden)
+                emb = bank[wk][song_idxs]      # differentiable gather
+                emb = emb.masked_fill(pad_col.unsqueeze(-1), 0.0)
+            else:
+                emb = torch.zeros(B, self.hidden, device=dev)
+            seq_parts.append(emb)
+
+        seq      = torch.stack(seq_parts, dim=1)          # (B, W, hidden)
+        pad_mask = torch.stack(pad_cols, dim=1)            # (B, W) bool
 
         return self.head(seq, pad_mask)
 
