@@ -61,6 +61,60 @@
   top200 ∪ (viral50 ∩ acoustic_features_in_complete_MGDplus) = 6.526 músicas.
   Tolerância C1 atualizada de ±10 para ±100. Registrado no spec.md.
 
+- **2026-05-30** — **Phase 2 especificada** (`.specs/features/phase-2-temporal-gnn/spec.md` + `context.md`).
+  3 gray areas resolvidas no specify: (D1) objetivo de treino = **Ambos** (forecasting 1-passo
+  para predição genuína + fit retroativo da curva para comparação com SIR; encoder compartilhado);
+  (D2) barra de conclusão = **bater persistência ingênua** `ŷ(t)=y(t-1)` no val MSE em ambos os
+  regimes — comparação rigorosa vs SIR deferida à Phase 3; (D3) HPs = **grid pequeno do ROADMAP**
+  (W∈{4,8,12}, hidden∈{64,128}, layers∈{2,3}, lr∈{1e-3,5e-4}), seleção por val MSE.
+  Alvo confirmado: `y(t)∈[0,0.5]` do `timeseries.parquet` (mesma def. do Phase 0), regimes
+  virality (viral50) / success (top200). 6 open questions p/ design (tratamento de semanas
+  fora do chart, cache de embeddings por semana, padding de janela, def. exata do fit retroativo,
+  edge subsampling, batching causal).
+
+- **2026-05-30** — **Phase 2 design aprovado** (`.specs/features/phase-2-temporal-gnn/design.md`).
+  **Descoberta decisiva:** `timeseries.parquet` é **diário** (4,44M linhas) mas o grafo é **semanal**
+  (`first_seen_week∈[0,260]`, `mask_until` por semana). Logo o alvo é modelado em **granularidade
+  semanal** (`y_week` = média diária por ISO-week); linhas de 2022 (`week>260`) descartadas.
+  Comparabilidade semanal↔diária com SIR fica para a Phase 3 (decisão T-gran).
+  OQ1–OQ6 resolvidas: (OQ1) treinar no span ativo `[first_seen..last_seen]` incl. semanas de baixa
+  popularidade; (OQ2) **banco de embeddings por semana computado por minibatch** (só semanas distintas
+  do batch, cache intra-forward, backprop através dos snapshots — não cacheável entre épocas pois pesos
+  mudam); (OQ3) left-pad zeros + pad_mask, alvo só p/ `w>first_seen`; (OQ4) **um modelo, dois
+  protocolos**: forecasting (held-out) + retroativo (reconstrução in-sample teacher-forced);
+  (OQ5) edge subsampling **deferido** (grafo completo ~700K arestas OK em CPU; dropout+wd+early-stop);
+  (OQ6) minibatch de tuplas `(song,chart,week)` com shuffle livre (janela causal própria).
+  Componentes: `models/{encoder,temporal_head,diffusion_gnn,baselines}.py`, `training/{dataset,trainer}.py`,
+  `scripts/run_phase2.py`. `models/` e `training/` estão vazios (só `__init__`).
+  **Dívida técnica:** `pyarrow` ausente na `.venv` (a `.venv` aponta interpreter de path antigo
+  `music-diffusion-gnn`; `.venv/bin/pip` quebrado, usar `.venv/bin/python -m pip`); pyarrow instalado
+  nesta sessão, falta fixar em `pyproject.toml`.
+
+- **2026-05-30** — **Phase 2 tasks definidas** (`.specs/features/phase-2-temporal-gnn/tasks.md`).
+  15 tasks atômicas em 6 waves: T1 deps → T2/T3/T4 dataset (sequencial) → T5/T6/T8 modelos (paralelos)
+  + T7 diffusion_gnn (após T5,T6) → T9/T10/T11 trainer (sequencial) → T12/T13 testes (paralelos) →
+  T14 run_phase2 → T15 execução real. Cada task = 1 commit; PR único final. Sem MCPs/Skills (PyG puro).
+  Confirmado: `pyarrow` **não** está em `pyproject.toml` (deps linhas 16–27) — T1 = adicionar `pyarrow>=14.0`.
+  Testes em `tests/` (raiz, padrão Phase 1: `test_phase1_build.py`, `test_phase1_temporal.py`).
+  Artefatos confirmados: `data/processed/graph/{hetero_full.pt,node_id_map.json}`, `data/processed/subset_ids.json`.
+
+- **2026-05-31** — **Phase 2 implementada** (T1–T14 concluídas; T15 grid rodando).
+  Componentes implementados: `models/{encoder,temporal_head,diffusion_gnn,baselines}.py`,
+  `training/{dataset,trainer}.py`, `scripts/run_phase2.py`, `tests/test_phase2_{leakage,forward}.py`.
+  **Descobertas de implementação:**
+  (I1) `week_index` não é bijetivo para anos com 53 semanas ISO (2020-W53 e 2021-W01 → índice 208);
+  corrigido usando partição estrita: train≤182, val∈(182,208), test≥208.
+  (I2) Granularidade semanal implementada via `pandas.Series.dt.isocalendar()` vetorizado
+  (chamada por linha ao `week_index` causava ValueError em 2017-01-01 = ISO 2016-W52).
+  (I3) OQ5 (edge subsampling) **desadiado**: 664K arestas cotrajetória esgotavam memória
+  autograd em WSL. Solução: `max_cotraj_edges=30_000` (DropEdge ~4,5% das arestas por snapshot).
+  (I4) Batching por semana-alvo (`_iter_batches` week-grouped): amostras agrupadas por `target_week`
+  → banco compartilhado na semana (`retain_graph` ou sub-batch único). 14× speedup vs shuffle livre.
+  (I5) `predict()` vetorizado: `bank[wk][song_idxs]` (fancy indexing) em vez de loop B×W.
+  Benchmark final: 38s/época (W=4, dataset completo 321K amostras, 1981 músicas).
+  Grid 24 configs × ~30 épocas estimado em 10–15h (rodando em background, PID 292329).
+  C6/C7 pendentes (GNN não bateu persistência no smoke test com 5 épocas/50 músicas — esperado).
+
 ## Blockers
 
 - *(nenhum)*
@@ -89,6 +143,12 @@
 - [x] Executar `/tlc-spec-driven design phase-1-hetero-graph` (5 open questions resolvidas). Concluído em 2026-05-17.
 - [x] Executar `/tlc-spec-driven tasks phase-1-hetero-graph` (16 tasks atômicas em 6 waves). Concluído em 2026-05-17.
 - [x] Executar `/tlc-spec-driven implement phase-1-hetero-graph` (rodar T1 → T16). Concluído em 2026-05-17.
+- [x] Especificar **Phase 2** (`.specs/features/phase-2-temporal-gnn/`). Concluído em 2026-05-30 (3 gray areas resolvidas).
+- [ ] Executar `/tlc-spec-driven design phase-2-temporal-gnn` (resolver OQ1–OQ6: semanas off-chart, cache de embeddings, padding, fit retroativo, edge subsampling, batching causal).
+- [x] Executar `/tlc-spec-driven tasks phase-2-temporal-gnn` (15 tasks atômicas em 6 waves). Concluído em 2026-05-30.
+- [~] Executar `/tlc-spec-driven implement phase-2-temporal-gnn` — T1–T14 concluídas 2026-05-31; T15 (grid) rodando.
+- [ ] Conferir C1–C9 quando grid terminar; registrar resultados em STATE.md.
+- [ ] Se C6/C7 falhar: ativar Plano B (HGT ou Transformer head).
 
 ## Deferred ideas
 
