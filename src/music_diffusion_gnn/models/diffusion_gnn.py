@@ -16,6 +16,30 @@ if TYPE_CHECKING:
     from music_diffusion_gnn.training.dataset import Sample
 
 
+_COTRAJ_ET = ("music", "cotrajectory", "music")
+
+
+def _subsample_cotraj(snap: HeteroData, max_edges: int) -> HeteroData:
+    """Randomly subsample cotrajectory edges if there are more than max_edges.
+
+    Returns the same object if cotrajectory is already within budget.
+    """
+    if _COTRAJ_ET not in snap.edge_types:
+        return snap
+    store = snap[_COTRAJ_ET]
+    n_edges = store.edge_index.shape[1]
+    if n_edges <= max_edges:
+        return snap
+
+    perm = torch.randperm(n_edges)[:max_edges]
+    snap[_COTRAJ_ET].edge_index = store.edge_index[:, perm]
+    if "edge_attr" in store and store.edge_attr is not None:
+        snap[_COTRAJ_ET].edge_attr = store.edge_attr[perm]
+    if "first_seen_week" in store:
+        snap[_COTRAJ_ET].first_seen_week = store.first_seen_week[perm]
+    return snap
+
+
 class MusicDiffusionGNN(nn.Module):
     """Heterogeneous temporal GNN for music popularity prediction.
 
@@ -48,12 +72,16 @@ class MusicDiffusionGNN(nn.Module):
         self,
         g: HeteroData,
         weeks: list[int],
+        max_cotraj_edges: int | None = None,
     ) -> dict[int, Tensor]:
         """Compute music embeddings for each distinct week (one forward per week).
 
         Args:
             g: the full ``hetero_full`` graph
             weeks: list of week indices to encode (duplicates encoded once)
+            max_cotraj_edges: if given, randomly subsample cotrajectory edges to
+                at most this many per snapshot (DropEdge regularization).
+                Reduces autograd memory when the full graph exceeds RAM.
 
         Returns:
             ``{week: Z_music}`` where each Z_music ∈ (N_music, hidden)
@@ -61,6 +89,8 @@ class MusicDiffusionGNN(nn.Module):
         bank: dict[int, Tensor] = {}
         for w in set(weeks):
             snap = mask_until(g, w)
+            if max_cotraj_edges is not None:
+                snap = _subsample_cotraj(snap, max_cotraj_edges)
             bank[w] = self.encoder(snap.x_dict, snap.edge_index_dict)
         return bank
 

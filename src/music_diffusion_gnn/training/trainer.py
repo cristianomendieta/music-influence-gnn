@@ -37,7 +37,10 @@ class Config:
     max_epochs: int = 100
     patience: int = 10
     seed: int = 42
-    batch_size: int = 256
+    batch_size: int = 64
+    # Subsample cotrajectory edges per snapshot to this maximum.
+    # Necessary when 664K edges exhaust autograd memory on CPU/WSL.
+    max_cotraj_edges: int = 30_000
 
     def __str__(self) -> str:
         return f"W{self.W}_h{self.hidden}_l{self.layers}_lr{self.lr:.0e}"
@@ -78,12 +81,36 @@ def _iter_batches(
     batch_size: int,
     rng: torch.Generator,
 ) -> list[list[Sample]]:
-    """Yield shuffled batches of samples."""
-    idxs = torch.randperm(len(samples), generator=rng).tolist()
+    """Yield week-grouped batches to minimise distinct encoder calls per batch.
+
+    Groups samples by target_week (so each batch needs at most W window-week
+    encoder calls). Week groups are shuffled between epochs via ``rng``.
+    Within each group, samples are also shuffled. Groups are concatenated into
+    batches of size ``batch_size`` — a batch may straddle at most 2 groups,
+    keeping distinct encoder calls at most 2W.
+    """
+    # Group by target_week
+    from collections import defaultdict
+    by_week: dict[int, list[Sample]] = defaultdict(list)
+    for s in samples:
+        by_week[s.target_week].append(s)
+
+    # Shuffle week order
+    week_keys = list(by_week.keys())
+    perm = torch.randperm(len(week_keys), generator=rng).tolist()
+    ordered_weeks = [week_keys[i] for i in perm]
+
+    # Build a flat ordered list (shuffled within each week group)
+    flat: list[Sample] = []
+    for wk in ordered_weeks:
+        grp = by_week[wk]
+        grp_perm = torch.randperm(len(grp), generator=rng).tolist()
+        flat.extend(grp[i] for i in grp_perm)
+
+    # Slice into batches
     batches = []
-    for start in range(0, len(samples), batch_size):
-        batch_idxs = idxs[start : start + batch_size]
-        batches.append([samples[i] for i in batch_idxs])
+    for start in range(0, len(flat), batch_size):
+        batches.append(flat[start : start + batch_size])
     return batches
 
 
@@ -145,35 +172,61 @@ def train_one(
     train_curve: list[float] = []
     val_curve: list[float]   = []
 
+    # Pre-group train samples by target_week for efficient bank reuse
+    from collections import defaultdict
+    by_week: dict[int, list[Sample]] = defaultdict(list)
+    for s in train_samples:
+        by_week[s.target_week].append(s)
+    week_keys = list(by_week.keys())
+
     for epoch in range(config.max_epochs):
         # ---- Train ----
         model.train()
         epoch_loss = 0.0
         n_batches  = 0
 
-        for batch in _iter_batches(train_samples, config.batch_size, rng):
-            # Encode only the distinct weeks required by this batch
-            weeks = _distinct_window_weeks(batch)
-            if not weeks:
+        # Shuffle week order each epoch
+        week_perm = torch.randperm(len(week_keys), generator=rng).tolist()
+
+        for wi in week_perm:
+            w = week_keys[wi]
+            week_samples = by_week[w]
+
+            # Window weeks for this target_week (same for all samples in group)
+            window_weeks = _distinct_window_weeks(week_samples)
+            if not window_weeks:
                 continue
 
+            # Compute bank ONCE for the whole week group
+            # retain_graph lets us backprop through the same bank for each sub-batch
+            bank = model.encode_weeks(g, window_weeks,
+                                      max_cotraj_edges=config.max_cotraj_edges)
+
+            # Sub-batch the week group
+            grp_perm = torch.randperm(len(week_samples), generator=rng).tolist()
+            sub_batches = [
+                [week_samples[grp_perm[i]] for i in range(start, min(start + config.batch_size, len(week_samples)))]
+                for start in range(0, len(week_samples), config.batch_size)
+            ]
+            n_sub = len(sub_batches)
+
             optimizer.zero_grad()
-            bank = model.encode_weeks(g, weeks)
-            y_hat = model.predict(bank, batch)
-            y_true = torch.tensor([s.y for s in batch], dtype=torch.float32)
-
-            loss = loss_fn(y_hat, y_true)
-            loss.backward()
+            for bi, batch in enumerate(sub_batches):
+                is_last = (bi == n_sub - 1)
+                y_hat  = model.predict(bank, batch)
+                y_true = torch.tensor([s.y for s in batch], dtype=torch.float32)
+                loss   = loss_fn(y_hat, y_true) / n_sub
+                loss.backward(retain_graph=not is_last)
+                epoch_loss += loss.item() * n_sub  # undo normalisation for logging
+                n_batches  += 1
             optimizer.step()
-
-            epoch_loss += loss.item()
-            n_batches  += 1
 
         train_mse = epoch_loss / max(n_batches, 1)
         train_curve.append(train_mse)
 
         # ---- Val ----
-        val_mse = _eval_mse(model, g, val_samples, config.batch_size)
+        val_mse = _eval_mse(model, g, val_samples, config.batch_size,
+                            max_cotraj_edges=config.max_cotraj_edges)
         val_curve.append(val_mse)
 
         if val_mse < best_val_mse:
@@ -204,6 +257,7 @@ def _eval_mse(
     g,
     samples: list[Sample],
     batch_size: int,
+    max_cotraj_edges: int | None = None,
 ) -> float:
     """Compute MSE over samples without updating gradients."""
     model.eval()
@@ -215,7 +269,7 @@ def _eval_mse(
             weeks = _distinct_window_weeks(batch)
             if not weeks:
                 continue
-            bank = model.encode_weeks(g, weeks)
+            bank = model.encode_weeks(g, weeks, max_cotraj_edges=max_cotraj_edges)
             y_hat = model.predict(bank, batch)
             preds.append(y_hat.cpu())
             targets.append(torch.tensor([s.y for s in batch], dtype=torch.float32))
@@ -290,7 +344,8 @@ def evaluate(
     val_split_df: pd.DataFrame,
     g,
     mode: str,
-    batch_size: int = 256,
+    batch_size: int = 64,
+    max_cotraj_edges: int | None = None,
 ) -> dict:
     """Evaluate model on val set under the specified protocol.
 
@@ -327,7 +382,7 @@ def evaluate(
             weeks = _distinct_window_weeks(batch)
             if not weeks:
                 continue
-            bank = model.encode_weeks(g, weeks)
+            bank = model.encode_weeks(g, weeks, max_cotraj_edges=max_cotraj_edges)
             y_hat = model.predict(bank, batch).cpu().numpy()
 
             for samp, pred in zip(batch, y_hat):
