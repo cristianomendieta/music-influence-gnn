@@ -1,0 +1,1 @@
+transdutivo indutivo grafos
