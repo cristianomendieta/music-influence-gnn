@@ -137,6 +137,7 @@ def train_one(
     config: Config,
     splits: dict[str, list[Sample]],
     g,  # HeteroData
+    device: str = "cpu",
 ) -> TrainResult:
     """Train a single config with early stopping on val MSE.
 
@@ -144,6 +145,7 @@ def train_one(
         config: hyperparameters
         splits: dict with 'train', 'val' lists of Sample
         g: the full hetero_full graph (HeteroData)
+        device: torch device for model + graph ("cpu" or "cuda")
 
     Returns:
         TrainResult with best state_dict, loss curves, val MSE, params, time
@@ -151,12 +153,13 @@ def train_one(
     _set_seed(config.seed)
     t_start = time.time()
 
+    g = g.to(device)
     model = MusicDiffusionGNN(
         g.metadata(),
         hidden=config.hidden,
         layers=config.layers,
         dropout=config.dropout,
-    )
+    ).to(device)
     optimizer = Adam(
         model.parameters(),
         lr=config.lr,
@@ -219,7 +222,7 @@ def train_one(
             for bi, batch in enumerate(sub_batches):
                 is_last = (bi == n_sub - 1)
                 y_hat  = model.predict(bank, batch)
-                y_true = torch.tensor([s.y for s in batch], dtype=torch.float32)
+                y_true = torch.tensor([s.y for s in batch], dtype=torch.float32, device=device)
                 loss   = loss_fn(y_hat, y_true) / n_sub
                 loss.backward(retain_graph=not is_last)
                 epoch_loss += loss.item() * n_sub  # undo normalisation for logging
@@ -301,6 +304,7 @@ def run_grid(
     grid: list[Config],
     splits: dict[str, list[Sample]],
     g,
+    device: str = "cpu",
 ) -> tuple[pd.DataFrame, Config, dict]:
     """Run hyperparameter grid; return (results_df, best_config, best_state_dict).
 
@@ -314,7 +318,7 @@ def run_grid(
 
     for i, cfg in enumerate(grid):
         print(f"  [{i+1}/{len(grid)}] {cfg} ...", flush=True)
-        result = train_one(cfg, splits, g)
+        result = train_one(cfg, splits, g, device=device)
         print(f"    val_mse={result.val_mse:.6f}  params={result.n_params}  t={result.elapsed_sec:.1f}s")
 
         rows.append({
@@ -351,6 +355,7 @@ def evaluate(
     mode: str,
     batch_size: int = 64,
     max_cotraj_edges: int | None = None,
+    device: str = "cpu",
 ) -> dict:
     """Evaluate model on val set under the specified protocol.
 
@@ -362,6 +367,7 @@ def evaluate(
         g: hetero_full graph
         mode: 'forecasting' (held-out) or 'retroactive' (in-sample teacher-forced)
         batch_size: eval batch size
+        device: torch device for model + graph ("cpu" or "cuda")
 
     Returns:
         dict with keys:
@@ -370,6 +376,9 @@ def evaluate(
             predictions_df  (columns: song_idx, chart_code, week, y_true, y_pred, mode)
     """
     assert mode in ("forecasting", "retroactive")
+
+    model = model.to(device)
+    g = g.to(device)
 
     if mode == "forecasting":
         eval_samples = splits["val"]

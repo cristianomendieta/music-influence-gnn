@@ -31,7 +31,7 @@ def _subsample_cotraj(snap: HeteroData, max_edges: int) -> HeteroData:
     if n_edges <= max_edges:
         return snap
 
-    perm = torch.randperm(n_edges)[:max_edges]
+    perm = torch.randperm(n_edges, device=store.edge_index.device)[:max_edges]
     snap[_COTRAJ_ET].edge_index = store.edge_index[:, perm]
     if "edge_attr" in store and store.edge_attr is not None:
         snap[_COTRAJ_ET].edge_attr = store.edge_attr[perm]

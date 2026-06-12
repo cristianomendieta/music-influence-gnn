@@ -20,4 +20,15 @@ lightning_logs/
 .idea/
 
 .claude
-data
+
+# Data is ignored, EXCEPT the 3 processed artifacts the Colab notebook clones.
+# Negations come last and re-include each parent dir; the hetero_full.pt negation
+# also overrides the global *.pt rule above.
+data/*
+!data/processed/
+data/processed/*
+!data/processed/timeseries.parquet
+!data/processed/graph/
+data/processed/graph/*
+!data/processed/graph/hetero_full.pt
+!data/processed/graph/node_id_map.json
