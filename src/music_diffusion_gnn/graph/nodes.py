@@ -51,18 +51,19 @@ def build_music_nodes(
     """Build music node features and id-map.
 
     Returns:
-        x_music: float32 Tensor of shape (N_m, 15)
+        x_music: float32 Tensor of shape (N_m, 12)
         music_id_map: dict mapping song_id -> index (sorted, deterministic)
 
-    Feature columns (15):
+    Feature columns (12) — static metadata only. The full-series chart
+    aggregates popularity, total_streams and dias_no_chart were REMOVED to
+    avoid temporal leakage: they summarise the whole 2017-2021 window (incl.
+    the test period) yet are reused unchanged at every snapshot by mask_until.
+    See tests/test_node_feature_leakage.py.
         0-8: acoustic (acousticness, danceability, energy, instrumentalness,
              liveness, loudness, speechiness, valence, tempo) — z-scored
-        9:   popularity — z-scored
-        10:  explicit — 0/1 (no z-score, binary)
-        11:  song_type — encoded int, z-scored
-        12:  total_streams — z-scored
-        13:  dias_no_chart — z-scored
-        14:  acoustic_missing — 0/1 (no z-score, flag)
+        9:   explicit — 0/1 (no z-score, binary)
+        10:  song_type — encoded int, z-scored
+        11:  acoustic_missing — 0/1 (no z-score, flag)
     """
     # Universe = top200 songs UNION viral50 songs that have acoustic features.
     # This matches the spec's ~6.469 estimate (actual: ~6.526) and avoids >48% imputation
@@ -76,15 +77,6 @@ def build_music_nodes(
     universe_ids = sorted(universe)
     music_id_map: dict[str, int] = {sid: idx for idx, sid in enumerate(universe_ids)}
     N = len(universe_ids)
-
-    # dias_no_chart: unique dates per song across all charts
-    dias = (
-        charts_df.groupby("song_id")["date"]
-        .nunique()
-        .reindex(universe_ids)
-        .fillna(0)
-        .values.astype(np.float32)
-    )
 
     # Songs dataframe indexed by song_id
     songs_indexed = songs_df.set_index("song_id")
@@ -111,15 +103,6 @@ def build_music_nodes(
         (acoustic_raw - acoustic_means) / acoustic_stds,
     ).astype(np.float32)
 
-    # Popularity
-    if "popularity" in songs_indexed.columns:
-        pop_raw = songs_indexed["popularity"].reindex(universe_ids).values.astype(np.float64)
-    else:
-        pop_raw = np.full(N, np.nan)
-    pop_median = np.nanmedian(pop_raw)
-    pop_filled = np.where(np.isnan(pop_raw), pop_median, pop_raw)
-    pop_z = _zscore(pop_filled.reshape(-1, 1)).flatten().astype(np.float32)
-
     # Explicit (binary)
     if "explicit" in songs_indexed.columns:
         exp_raw = songs_indexed["explicit"].reindex(universe_ids)
@@ -139,27 +122,12 @@ def build_music_nodes(
         st_int = np.zeros(N, dtype=np.float64)
     st_z = _zscore(st_int.reshape(-1, 1)).flatten().astype(np.float32)
 
-    # Total streams
-    if "total_streams" in songs_indexed.columns:
-        ts_raw = songs_indexed["total_streams"].reindex(universe_ids).values.astype(np.float64)
-    else:
-        ts_raw = np.full(N, np.nan)
-    ts_median = np.nanmedian(ts_raw)
-    ts_filled = np.where(np.isnan(ts_raw), ts_median, ts_raw)
-    ts_z = _zscore(ts_filled.reshape(-1, 1)).flatten().astype(np.float32)
-
-    # dias_no_chart z-score
-    dias_z = _zscore(dias.reshape(-1, 1)).flatten().astype(np.float32)
-
-    # Assemble (N, 15)
+    # Assemble (N, 12) — static metadata only; no full-series chart aggregates
     x = np.stack([
         *[acoustic_z[:, i] for i in range(len(ACOUSTIC_COLS))],  # 0-8
-        pop_z,        # 9
-        explicit,     # 10
-        st_z,         # 11
-        ts_z,         # 12
-        dias_z,       # 13
-        acoustic_missing,  # 14
+        explicit,          # 9
+        st_z,              # 10
+        acoustic_missing,  # 11
     ], axis=1)
 
     assert not np.isnan(x).any(), "NaN found in music node features after imputation"
@@ -185,14 +153,15 @@ def build_artist_nodes(
     """Build artist node features and id-map.
 
     Returns:
-        x_artist: float32 Tensor (N_a, 4)
+        x_artist: float32 Tensor (N_a, 1)
         artist_id_map: dict artist_id -> index (sorted, deterministic)
 
-    Feature columns (4):
-        0: num_hits (z-scored)
-        1: num_collab_hits (z-scored)
-        2: anos_no_chart = len(years_on_charts) (z-scored)
-        3: n_genres = len(genres_list) (z-scored)
+    Feature columns (1) — static metadata only. The full-series chart
+    aggregates num_hits, num_collab_hits and anos_no_chart were REMOVED to
+    avoid temporal leakage: they count chart activity over the whole 2017-2021
+    window (incl. the test period) and propagate to music via `performs`.
+    See tests/test_node_feature_leakage.py.
+        0: n_genres = len(genres_list) (z-scored)
     """
     # Find all artist_ids appearing in songs within music_id_map
     universe_songs = set(music_id_map.keys())
@@ -224,15 +193,6 @@ def build_artist_nodes(
         )
         # Do NOT create zero-feature nodes: artist universe = br-artists-all_time.csv only
 
-    # Parse years_on_charts
-    if "years_on_charts" in filtered.columns:
-        filtered["years_list"] = _parse_list_col(filtered["years_on_charts"])
-        filtered["anos_no_chart"] = filtered["years_list"].apply(
-            lambda v: len(v) if isinstance(v, list) else 0
-        )
-    else:
-        filtered["anos_no_chart"] = 0
-
     # n_genres
     if "genres_list" not in filtered.columns:
         filtered["genres_list"] = filtered["genres"].apply(
@@ -248,10 +208,9 @@ def build_artist_nodes(
 
     df = filtered.set_index("artist_id").reindex(sorted_ids)
 
+    # Static metadata only: n_genres. Full-series chart counts (num_hits,
+    # num_collab_hits, anos_no_chart) removed to avoid temporal leakage (P0).
     feat_raw = np.stack([
-        df["num_hits"].fillna(0).values.astype(np.float64),
-        df["num_collab_hits"].fillna(0).values.astype(np.float64),
-        df["anos_no_chart"].fillna(0).values.astype(np.float64),
         df["n_genres"].fillna(0).values.astype(np.float64),
     ], axis=1)
 

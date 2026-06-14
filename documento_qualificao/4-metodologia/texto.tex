@@ -56,7 +56,7 @@ O grafo proposto possui três tipos de nós: \texttt{music}, \texttt{artist} e \
 
 % FIGURA: diagrama esquemático do grafo heterogêneo C-A-G (music-artist-genre) com os quatro tipos de aresta (performs, has_genre, cotrajectory, cooccurs) e setas tipadas. (adiada)
 
-As músicas são descritas por vetores de 15 dimensões. Esses vetores combinam nove atributos acústicos, popularidade, indicador de conteúdo explícito, tipo de música, total de streams, número de dias em chart e a flag de ausência acústica. Os artistas são descritos por quatro dimensões: número de hits, número de hits colaborativos, anos de presença em charts e número de gêneros associados. Os gêneros são representados por embeddings de 32 dimensões aprendidos durante o treinamento.
+As músicas são descritas por vetores de 12 dimensões, compostos por nove atributos acústicos, indicador de conteúdo explícito, tipo de música e uma flag de ausência acústica. Os artistas são descritos por uma única dimensão: o número de gêneros associados. Os gêneros são representados por embeddings de 32 dimensões aprendidos durante o treinamento. Deliberadamente, restringem-se as features de nó a metadados estáticos: agregados calculados sobre toda a janela temporal --- como total de streams, número de dias em chart, popularidade consolidada e contagens de hits por artista --- são excluídos, pois, sendo reaplicados de forma idêntica em todos os \emph{snapshots}, introduziriam vazamento de informação futura no vetor de cada nó (Seção~\ref{sec:vazamento}).
 
 O grafo contém quatro tipos principais de arestas. A relação \texttt{performs} conecta artistas a músicas e representa autoria ou participação. A relação \texttt{has\_genre} conecta artistas a gêneros. A relação \texttt{cotrajectory} conecta músicas que compartilham presença temporal nos charts e possuem trajetórias semelhantes. A relação \texttt{cooccurs} conecta gêneros que aparecem conjuntamente em agregações do dataset.
 
@@ -65,28 +65,101 @@ Cada tipo de aresta possui atributos específicos. Em \texttt{performs}, são re
 %=====================================================
 
 \section{Temporalidade e prevenção de vazamento}
+\label{sec:vazamento}
 
 A temporalidade é incorporada por meio do atributo \texttt{first\_seen\_week}. Para qualquer semana $t$, o modelo só pode acessar arestas observadas até aquela semana. Assim, snapshots do grafo são obtidos por filtragem temporal, sem materializar todas as versões em disco.
 
 Essa escolha é importante porque relações como \texttt{cotrajectory} podem depender de observações futuras se forem calculadas de forma ingênua. Ao filtrar por primeira semana observada, a avaliação se aproxima do cenário real de previsão: em uma data $t$, o modelo deve prever o futuro usando apenas músicas, atributos e relações disponíveis até $t$.
+
+A prevenção de vazamento não se restringe às arestas. Como o mecanismo de \emph{snapshots} filtra apenas arestas e reutiliza os vetores de nó inalterados em cada semana, qualquer atributo de nó derivado da trajetória de uma música ou artista nos charts --- número total de dias em chart, streams acumulados ou contagens de hits ao longo do período --- carregaria informação de toda a janela observada, inclusive do período de teste. Por isso, os vetores de nó são restritos a metadados estáticos (atributos acústicos, tipo e marcadores categóricos), e tais agregados \emph{full-series} são deliberadamente excluídos da representação.
 
 A formulação por snapshots semanais foi escolhida por compatibilidade com o custo computacional e com o grão temporal dos dados processados. Modelos temporais contínuos, como TGN, permanecem como alternativa para a Linha 2, na qual eventos de adoção de trends em vídeo curto podem ser representados com timestamps mais finos.
 
 %=====================================================
 
 \section{Modelo proposto}
+\label{sec:modelo-proposto}
 
-O modelo proposto combina uma GNN heterogênea com um componente recorrente temporal.
+O modelo proposto, denominado \textsc{MusicDiffusionGNN}, combina uma rede neural em grafo heterogêneo com um componente recorrente temporal. A arquitetura é organizada em dois módulos desacoplados: um \emph{codificador espacial}, que produz uma representação vetorial para cada música a partir de um \emph{snapshot} do grafo em uma dada semana, e uma \emph{cabeça temporal}, que consome a sequência de representações de uma música ao longo de uma janela de semanas e prevê seu \emph{rank-score} futuro. Esse desacoplamento é deliberado: como o codificador depende apenas da estrutura observável até a semana $t$, sua saída pode ser calculada uma única vez por semana e reutilizada por todas as músicas avaliadas naquele instante, reduzindo o custo de treinamento sobre as $\sim$260 semanas da janela temporal.
+
+\subsection{Codificador espacial heterogêneo}
+
+Seja $G_t = \textsc{mask\_until}(G, t)$ o snapshot do grafo contendo apenas as arestas cuja primeira observação ocorre até a semana $t$ (Seção~\ref{cap:metodologia-linha1}, atributo \texttt{first\_seen\_week}). O codificador é uma rede \emph{HeteroGraphSAGE} \citep{hamilton2017graphsage} com $L$ camadas de passagem de mensagens, em que cada tipo de relação $r \in \mathcal{R}$ possui parâmetros próprios. Para um nó $v$ e uma relação $r$ na camada $\ell$, a mensagem agregada dos vizinhos segue a formulação do GraphSAGE:
+
+\begin{equation}
+\label{eq:sage-rel}
+\mathbf{h}_v^{(r,\ell)} = \mathbf{W}^{(\ell)}_{r,\text{self}}\,\mathbf{h}_v^{(\ell-1)}
+  \;+\; \mathbf{W}^{(\ell)}_{r,\text{viz}} \cdot \operatorname{mean}_{u \in \mathcal{N}_r(v)} \mathbf{h}_u^{(\ell-1)},
+\end{equation}
+
+\noindent em que $\mathcal{N}_r(v)$ é a vizinhança de $v$ pela relação $r$, e $\mathbf{W}^{(\ell)}_{r,\text{self}}$ e $\mathbf{W}^{(\ell)}_{r,\text{viz}}$ são matrizes de pesos específicas da relação. Como cada nó pode ser destino de múltiplas relações, as contribuições são combinadas por soma entre relações, seguida de não linearidade:
+
+\begin{equation}
+\label{eq:hetero-agg}
+\mathbf{h}_v^{(\ell)} = \operatorname{ReLU}\!\Bigg( \sum_{r \,\in\, \mathcal{R}(v)} \mathbf{h}_v^{(r,\ell)} \Bigg),
+\end{equation}
+
+\noindent onde $\mathcal{R}(v)$ é o conjunto de relações que têm o tipo de $v$ como destino. Entre camadas consecutivas aplica-se \emph{dropout} às representações intermediárias. As representações iniciais $\mathbf{h}_v^{(0)}$ correspondem aos vetores de atributos de cada tipo de nó descritos na Seção~\ref{cap:metodologia-linha1} (12 dimensões para música, 1 para artista e um \emph{embedding} aprendido de 32 dimensões para gênero). Após $L$ camadas, a saída de interesse é a matriz de \emph{embeddings} de música $\mathbf{Z}^{(t)}_{\text{music}} \in \mathbb{R}^{N_{\text{music}} \times d}$, onde $d$ é a dimensão oculta.
+
+Além das quatro relações semânticas (\texttt{performs}, \texttt{has\_genre}, \texttt{cotrajectory} e \texttt{cooccurs}), inclui-se a relação reversa $\texttt{genre} \to \texttt{artist}$ derivada de \texttt{has\_genre}. Essa adição permite que o sinal de gênero, que de outra forma só receberia mensagens, propague-se de volta aos artistas e, em uma camada subsequente, alcance as músicas. Essa é uma das razões para empilhar $L \geq 2$ camadas: a informação de gênero só chega às músicas após dois passos de mensagem (\texttt{genre} $\to$ \texttt{artist} $\to$ \texttt{music}).
+
+\subsection{Snapshots temporais e banco de \emph{embeddings}}
+
+A dimensão temporal é incorporada calculando-se o codificador sobre os snapshots $G_t$ exigidos por uma janela de previsão. Para um conjunto de semanas distintas $\{t_1, \dots, t_m\}$ requeridas por um \emph{minibatch}, monta-se um \emph{banco de embeddings} $\mathcal{B} = \{\, t \mapsto \mathbf{Z}^{(t)}_{\text{music}} \,\}$, em que cada entrada é calculada uma única vez e compartilhada por todas as músicas que precisam daquela semana. O banco é mantido dentro do grafo de \emph{autograd} do \emph{minibatch}, de modo que o codificador é treinado de ponta a ponta junto com a cabeça temporal. Como o snapshot de uma semana $t$ contém apenas arestas com \texttt{first\_seen\_week} $\leq t$, a construção elimina o vazamento temporal pela via das arestas; a ausência de vazamento pelas \emph{features de nó} é garantida separadamente, restringindo-as a metadados estáticos (Seção~\ref{sec:vazamento}).
+
+Em razão do volume da relação \texttt{cotrajectory} (mais de 660 mil arestas), aplica-se, durante o treinamento, uma subamostragem aleatória dessas arestas por snapshot até um teto fixo, técnica análoga ao \emph{DropEdge}. Essa medida cumpre dupla função: controla o consumo de memória do banco diferenciável e atua como regularização estrutural.
+
+\subsection{Cabeça temporal recorrente}
+
+Para prever o \emph{rank-score} de uma música $i$ em uma semana-alvo $w$ e em um chart $c$, define-se uma janela causal de comprimento $W$ composta pelas semanas $[\,w-W, \dots, w-1\,]$. A cabeça temporal recebe a sequência de \emph{embeddings} dessa música ao longo da janela,
+\begin{equation}
+\label{eq:seq}
+\mathbf{s}_i = \big( \mathbf{z}_i^{(w-W)}, \dots, \mathbf{z}_i^{(w-1)} \big), \qquad \mathbf{z}_i^{(t)} = \mathbf{Z}^{(t)}_{\text{music}}[i],
+\end{equation}
+\noindent em que posições anteriores à primeira semana observada da música (ou a índices negativos) são preenchidas com zeros e sinalizadas por uma máscara, evitando que passos sem informação influenciem o estado recorrente. A sequência é processada por uma GRU de uma camada \citep{cho2014gru}, cujo estado oculto final $\mathbf{h}_i$ resume a trajetória da música. Esse estado alimenta um perceptron multicamadas (MLP) com não linearidade ReLU e \emph{dropout}, e a previsão é restringida ao intervalo do alvo por meio de uma sigmoide escalada:
+
+\begin{equation}
+\label{eq:head-out}
+\hat{y}_i = 0{,}5 \cdot \sigma\big( \operatorname{MLP}(\mathbf{h}_i) \big),
+\end{equation}
+
+\noindent garantindo $\hat{y}_i \in [0,\,0{,}5]$ sem necessidade de truncamento posterior, em consonância com a normalização do \emph{rank-score} descrita na Seção~\ref{cap:metodologia-linha1}.
+
+\subsection{Função de perda, otimização e regularização}
+
+O modelo é treinado por minimização do erro quadrático médio (MSE) entre a previsão $\hat{y}_i$ e o \emph{rank-score} semanal observado, usando o otimizador Adam. A regularização combina três mecanismos: \emph{dropout} no codificador e na cabeça, decaimento de pesos (\emph{weight decay}) no otimizador e \emph{early stopping} guiado pelo MSE de validação. A Tabela~\ref{tab:hparams} resume o espaço de hiperparâmetros explorado por busca em grade, totalizando $3 \times 2 \times 2 \times 2 = 24$ configurações; a configuração final é selecionada pelo menor MSE de validação, mantendo o conjunto de teste reservado.
+
+\begin{table}[htbp]
+\centering
+\caption{Espaço de hiperparâmetros do modelo proposto.}
+\label{tab:hparams}
+\begin{tabular}{p{6.5cm}p{6.0cm}}
+\hline
+\textbf{Hiperparâmetro} & \textbf{Valores} \\
+\hline
+Janela temporal $W$ (semanas) & $\{4,\ 8,\ 12\}$ \\
+Dimensão oculta $d$ & $\{64,\ 128\}$ \\
+Camadas do codificador $L$ & $\{2,\ 3\}$ \\
+Taxa de aprendizado & $\{10^{-3},\ 5\times10^{-4}\}$ \\
+\emph{Dropout} & $0{,}2$ \\
+\emph{Weight decay} & $10^{-5}$ \\
+Épocas máximas / paciência & $100\ /\ 10$ \\
+Teto de arestas \texttt{cotrajectory} por snapshot & $3{,}0 \times 10^{4}$ \\
+\hline
+\end{tabular}
+\end{table}
 
 %=====================================================
 
 \section{Protocolo experimental}
 
-A avaliação usa splits temporais. O período de 2017 a junho de 2020 é usado para treinamento; julho a dezembro de 2020 é usado para validação; e 2021 é reservado para teste. Essa divisão impede que o modelo seja avaliado em músicas ou relações futuras vistas durante o treinamento.
+A avaliação usa \emph{splits} temporais sobre a série agregada por semana. O \emph{rank-score} diário é consolidado em um alvo semanal $y_{\text{week}}(i, c, w)$, definido como a média dos valores diários da música $i$ no chart $c$ dentro da semana ISO $w$. Essa agregação alinha o grão da série ao grão das relações do grafo, cujas arestas têm resolução semanal (Seção~\ref{cap:metodologia-linha1}), e reduz o comprimento das séries de $\sim$1.900 para $\sim$260 passos. O período até junho de 2020 é usado para treinamento; de julho a dezembro de 2020, para validação; e 2021 é reservado para teste. Como os limites de \emph{split} são definidos por semana, cada semana pertence a exatamente uma partição, impedindo que o modelo seja avaliado sobre instantes vistos durante o treinamento.
 
-Serão executados dois regimes de avaliação. O primeiro é o ajuste retroativo, voltado à comparação direta com o baseline SIR e com o trabalho de referência. Nesse modo, o objetivo é verificar se o modelo reproduz ou melhora a descrição das curvas já observadas. O segundo é a predição genuína, em que o modelo prevê \emph{rank-score} em horizontes futuros usando apenas dados disponíveis até o instante de previsão.
+Serão executados dois regimes de avaliação que compartilham o mesmo modelo e os mesmos pesos. O primeiro é a \emph{previsão genuína} (\emph{forecasting}): o modelo prevê $y_{\text{week}}$ na partição futura mantida em reserva, usando apenas a janela causal de semanas anteriores ao instante de previsão. O segundo é o \emph{ajuste retroativo}: a curva de cada música é reconstruída de forma \emph{teacher-forced} ao longo de todo o seu período ativo, aproximando-se do ajuste \emph{in-sample} do baseline SIR. O regime retroativo cumpre função comparativa com o baseline epidemiológico, enquanto o regime de previsão mede a capacidade preditiva efetiva sobre dados não vistos.
 
-Os horizontes planejados são $k \in \{1, 7, 14, 30\}$ dias. As métricas principais são RMSE por horizonte e acerto direcional, isto é, se o modelo acerta a tendência de subida ou queda da música. Quando viável, também será considerada uma métrica probabilística, como CRPS, caso o modelo seja estendido para produzir distribuições preditivas.
+A métrica principal é o RMSE entre $\hat{y}_{\text{week}}$ e $y_{\text{week}}$, reportado separadamente para viralidade (Viral 50) e sucesso (Top 200), de forma coerente com a separação adotada no baseline SIR. Como referência ingênua de previsão, adota-se a \emph{persistência}, $\hat{y}(w) = y(w-1)$, que repete o último valor observado. A persistência é um baseline reconhecidamente forte em séries temporais e estabelece o piso que o modelo neural precisa superar: o critério mínimo de sucesso desta etapa é que a GNN heterogênea temporal apresente RMSE inferior ao da persistência em ambos os regimes de chart. Como métrica complementar, considera-se o acerto direcional --- se o modelo acerta a tendência de subida ou queda da música ---, a ser incorporado na avaliação final.
+
+A comparação direta com o baseline SIR ainda exige conciliar o grão semanal do modelo proposto com o grão diário em que o SIR foi originalmente ajustado. Essa conciliação --- por reamostragem da previsão semanal para a base diária ou por recálculo do erro do SIR em base semanal --- é tratada na etapa de avaliação comparativa, ainda em andamento, e não compromete a validade interna de cada regime isoladamente.
 
 %=====================================================
 
