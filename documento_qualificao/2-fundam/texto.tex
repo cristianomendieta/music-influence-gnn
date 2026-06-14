@@ -1,0 +1,82 @@
+\chapter{Fundamentação Teórica}
+\label{cap:fundamentacao}
+
+Este capítulo apresenta os conceitos que sustentam a proposta de modelar difusão cultural por meio de grafos heterogêneos temporais e redes neurais em grafos. A organização segue uma progressão conceitual: primeiro são discutidas redes sociais e plataformas digitais; em seguida, processos de difusão e modelos epidemiológicos; depois, grafos heterogêneos e temporais; por fim, redes neurais em grafos.
+
+%=====================================================
+
+\section{Redes sociais, plataformas digitais e difusão cultural}
+
+Redes sociais podem ser entendidas como estruturas compostas por entidades e relações. As entidades podem representar pessoas, artistas, músicas, gêneros, vídeos ou outros objetos culturais. As relações indicam formas de associação, como autoria, consumo, similaridade, coocorrência, compartilhamento de uma categoria ou adoção de uma tendência. Em plataformas digitais, essas relações deixam rastros observáveis em larga escala, permitindo estudar fenômenos culturais como processos estruturados de circulação.
+
+No caso de músicas em serviços de streaming, a visibilidade de uma faixa pode ser acompanhada por rankings diários de popularidade e viralidade. Esses rankings sintetizam a atenção recebida por uma música ao longo do tempo, mas não explicam sozinhos por que certas trajetórias são semelhantes, por que alguns gêneros concentram mais hits, ou por que artistas associados a determinados nichos apresentam padrões parecidos de difusão. Para responder a essas perguntas, é necessário representar também as relações entre músicas, artistas e gêneros.
+
+A difusão de tendências culturais em outras plataformas, como vídeos curtos, reforça a mesma intuição geral: conteúdos não circulam isoladamente, mas associados a formatos, sons, categorias, comunidades e padrões de reutilização. Este trabalho, contudo, utiliza esse fenômeno apenas como motivação ampla. O foco empírico desta qualificação é a difusão musical em charts brasileiros de streaming, onde as entidades e relações observáveis permitem construir um grafo heterogêneo temporal diretamente alinhado aos dados disponíveis.
+
+%=====================================================
+
+\section{Difusão de informação e modelos de contágio}
+
+A difusão de informação estuda como itens, comportamentos ou estados se propagam por uma população ou rede. Em uma formulação abstrata, um conteúdo pode ser adotado por alguns indivíduos e, a partir deles, alcançar novos indivíduos ao longo do tempo. Essa ideia aproxima a difusão informacional de modelos de contágio, nos quais a exposição a vizinhos, conteúdos ou sinais aumenta a probabilidade de adoção.
+
+Modelos clássicos de difusão em redes, como Independent Cascade e Linear Threshold, descrevem a propagação a partir de interações locais \citep{kempe2003ic}. No Independent Cascade, nós ativados têm oportunidades probabilísticas de ativar seus vizinhos. No Linear Threshold, um nó adota um comportamento quando a influência acumulada de seus vizinhos ultrapassa um limiar. Esses modelos são importantes porque tornam explícito que a estrutura da rede afeta o alcance da difusão: a posição dos nós, a força das conexões e os caminhos disponíveis alteram o resultado final do processo.
+
+Outra abordagem relevante é a dos modelos epidemiológicos compartimentais. Neles, a população é dividida em estados, e equações diferenciais descrevem a transição entre esses estados. No modelo SIR, indivíduos suscetíveis podem tornar-se infectados e, posteriormente, removidos. Ao transpor essa formulação para difusão musical, o estado infectado pode ser interpretado como atenção ativa a uma música, enquanto os parâmetros do modelo representam taxas agregadas de adoção e abandono.
+
+A formulação SIR clássica é dada por:
+
+\begin{equation}
+\frac{dS}{dt} = -\beta SI,
+\end{equation}
+
+\begin{equation}
+\frac{dI}{dt} = \beta SI - \gamma I,
+\end{equation}
+
+\begin{equation}
+\frac{dR}{dt} = \gamma I,
+\end{equation}
+
+em que $S$ representa a fração suscetível, $I$ a fração infectada, $R$ a fração removida, $\beta$ a taxa de contágio e $\gamma$ a taxa de remoção. A razão $R_0 = \beta / \gamma$ fornece uma medida agregada da capacidade de propagação do processo.
+
+Apesar de sua interpretabilidade, modelos compartimentais possuem uma limitação importante para o problema desta dissertação: eles tendem a resumir a difusão em poucos parâmetros globais. Essa simplificação é útil como baseline, mas não captura diretamente heterogeneidade de entidades, tipos distintos de relação, atributos de conteúdo e mudanças estruturais ao longo do tempo. Por isso, este trabalho usa modelos epidemiológicos como ponto de comparação, não como representação final do fenômeno.
+
+%=====================================================
+
+\section{Grafos heterogêneos e temporais}
+
+Um grafo $G = (V, E)$ é composto por um conjunto de nós $V$ e um conjunto de arestas $E$. Em grafos homogêneos, todos os nós e arestas são tratados como pertencentes a um mesmo tipo. Essa simplificação é adequada para muitos problemas, mas é insuficiente quando o domínio contém entidades semanticamente diferentes. Em difusão musical, uma música, um artista e um gênero não exercem o mesmo papel; da mesma forma, uma relação de autoria não tem o mesmo significado que uma relação de coocorrência.
+
+Grafos heterogêneos representam explicitamente múltiplos tipos de nós e arestas. Neste projeto, o grafo contém nós de música, artista e gênero, conectados por relações como \emph{performs}, \emph{has\_genre}, \emph{cotrajectory} e \emph{cooccurs}. Cada tipo de aresta expressa uma hipótese diferente sobre a difusão: artistas conectam repertórios, gêneros expressam homofilia cultural, coocorrências indicam proximidade entre categorias e trajetórias semelhantes aproximam músicas com padrões temporais parecidos.
+
+A dimensão temporal acrescenta outra restrição fundamental. Em tarefas preditivas, o modelo não deve usar relações que só se tornam observáveis no futuro. Por isso, cada aresta pode receber um tempo de primeira observação, permitindo construir snapshots do grafo até uma semana específica. Essa prática reduz vazamento temporal e aproxima a avaliação do cenário real: prever a evolução de uma música usando apenas a informação disponível até o instante de previsão.
+
+No contexto musical deste trabalho, a temporalidade aparece em dois níveis. O primeiro é a própria série diária de posição ou pontuação de uma música nos charts. O segundo é a evolução do grafo, pois relações derivadas de coocorrência ou de similaridade de trajetória só devem ser consideradas quando já são observáveis. A combinação desses níveis permite avaliar se a estrutura do grafo melhora a previsão em relação ao uso isolado da curva temporal.
+
+%=====================================================
+
+\section{Redes neurais em grafos}
+
+Redes neurais em grafos, ou Graph Neural Networks (GNNs), são modelos projetados para aprender representações de nós, arestas ou grafos inteiros a partir de atributos locais e estrutura relacional. A ideia central é a passagem de mensagens: cada nó atualiza sua representação agregando informações de seus vizinhos. Após múltiplas camadas, a representação de um nó incorpora informações de uma vizinhança progressivamente maior.
+
+Em uma forma geral, uma camada de GNN pode ser descrita por duas operações: agregação e atualização. A agregação combina mensagens provenientes dos vizinhos; a atualização transforma a representação anterior do nó e a mensagem agregada em uma nova representação. Diferentes arquiteturas se distinguem pela forma de normalizar vizinhos, ponderar mensagens, incorporar atenção ou lidar com diferentes tipos de aresta.
+
+Graph Convolutional Networks (GCNs) introduzem uma forma de convolução sobre grafos por meio de agregação normalizada de vizinhos \citep{kipf2017gcn}. GraphSAGE enfatiza aprendizado indutivo, permitindo gerar embeddings para nós não vistos a partir de funções de agregação \citep{hamilton2017graphsage}. Graph Attention Networks (GATs) incorporam mecanismos de atenção para atribuir pesos diferentes aos vizinhos \citep{velickovic2018gat}. Essas arquiteturas são fundamentais para compreender a família de modelos que este projeto utiliza como baseline ou componente metodológico.
+
+Em grafos heterogêneos, a passagem de mensagens precisa respeitar os tipos de nós e relações. Modelos como Heterogeneous Graph Transformer e variações de HetGNN lidam com essa diversidade por meio de parâmetros específicos por tipo, atenção sobre relações ou agregações especializadas \citep{hu2020hgt}. Essa capacidade é especialmente relevante neste projeto, pois a influência de um artista sobre uma música não deve ser tratada da mesma forma que a relação entre dois gêneros ou entre duas músicas com trajetórias semelhantes.
+
+%=====================================================
+
+\section{Grafos temporais e aprendizado em grafos dinâmicos}
+
+Grafos temporais representam relações que mudam ao longo do tempo. Em vez de assumir uma estrutura fixa, o modelo observa eventos, snapshots ou sequências de interações. Essa perspectiva é essencial para difusão musical, pois o momento em que uma música aparece em um chart, passa a compartilhar trajetória com outra música ou se conecta a determinado contexto de gênero altera a interpretação da própria conexão.
+
+Há duas formas comuns de modelar grafos temporais. A primeira discretiza o tempo em snapshots, criando uma sequência de grafos estáticos. Essa abordagem é simples e compatível com GNNs tradicionais, sendo particularmente adequada quando os dados são naturalmente agregados por dias ou semanas. A segunda trata o grafo como uma sequência contínua de eventos temporais, preservando timestamps individuais e permitindo atualizar representações conforme novas interações ocorrem.
+
+Nesta qualificação, a estratégia inicial é baseada em snapshots semanais do grafo musical. Relações observáveis até uma semana $t$ são utilizadas para prever viralidade ou sucesso em instantes posteriores, evitando que informações futuras entrem no treinamento ou na avaliação. Essa formulação permite comparar três famílias de modelos: baselines epidemiológicos, GNNs estáticas treinadas sobre uma versão agregada do grafo e GNNs temporais que respeitam a evolução das relações.
+
+%=====================================================
+
+\section{Síntese do capítulo}
+
+Os conceitos apresentados neste capítulo delimitam o espaço metodológico da dissertação. Modelos epidemiológicos oferecem baselines interpretáveis para curvas de difusão, mas comprimem a estrutura relacional em poucos parâmetros. Grafos heterogêneos temporais permitem representar músicas, artistas, gêneros e relações distintas respeitando a ordem de observação dos dados. Redes neurais em grafos oferecem mecanismos para aprender a partir dessa estrutura e comparar, de forma controlada, o ganho de usar relações heterogêneas e temporais no problema de difusão musical. O próximo passo do documento será posicionar essa combinação em relação aos trabalhos existentes e, em seguida, detalhar os dados e experimentos já conduzidos no dataset de Spotify/MGD+.

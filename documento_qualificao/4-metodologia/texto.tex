@@ -1,0 +1,97 @@
+\chapter{Dados e Metodologia}
+\label{cap:metodologia-linha1}
+
+Este capítulo descreve os dados e o protocolo metodológico do estudo, dedicado à difusão musical em charts brasileiros. A organização parte do pressuposto de que os conceitos de SIR, grafos heterogêneos, redes neurais em grafos e grafos temporais já foram apresentados na fundamentação teórica. Assim, o foco aqui é operacional: quais dados são usados, como eles são transformados em um grafo heterogêneo temporal, quais modelos serão comparados e como a avaliação será conduzida.
+
+%=====================================================
+
+\section{Visão geral da linha experimental}
+
+O estudo tem como objetivo comparar um baseline epidemiológico, baseado em SIR, com uma arquitetura neural em grafo heterogêneo temporal para previsão de difusão musical. O domínio empírico é composto por músicas presentes em charts brasileiros de streaming, especialmente Top 200 e Viral 50. A hipótese operacional é que a estrutura relacional entre músicas, artistas e gêneros acrescenta informação preditiva que não está disponível em modelos ajustados apenas sobre curvas agregadas.
+
+O desenho experimental segue três etapas. Primeiro, reproduz-se o baseline SIR sobre séries de viralidade e sucesso, de forma alinhada ao trabalho de referência \citep{oliveira2025brasnam}. Segundo, constrói-se um grafo heterogêneo com nós de música, artista e gênero, preservando atributos e tempos de observação das relações. Terceiro, treina-se uma GNN heterogênea com componente temporal para prever valores futuros de \emph{rank-score} e comparar seu desempenho com o baseline.
+
+%=====================================================
+
+\section{Fontes de dados}
+
+A base principal é o MGD+, que fornece metadados musicais e atributos acústicos associados a músicas e artistas \citep{seufitelli2023dsw}. Esses dados são combinados a séries de charts brasileiros do Spotify, em particular rankings diários de Top 200 e Viral 50. O Top 200 é usado como aproximação de sucesso ou popularidade consolidada, enquanto o Viral 50 representa sinais de crescimento e circulação viral.
+
+O universo atual do estudo contém 6.526 músicas, 1.701 artistas e 530 gêneros. Esses elementos formam os três tipos de nós do grafo heterogêneo. As músicas carregam atributos acústicos, indicadores de popularidade e variáveis derivadas dos charts; os artistas carregam estatísticas agregadas de presença em charts e diversidade de gêneros; os gêneros são representados por embeddings aprendidos durante o treinamento.
+
+A cobertura temporal considerada vai de 2017 a 2021. Essa janela permite separar treinamento, validação e teste de forma cronológica, evitando que informações futuras contaminem a avaliação. A separação temporal também é compatível com a formulação de snapshots semanais usada no grafo.
+
+%=====================================================
+
+\section{Pré-processamento das séries musicais}
+
+O pré-processamento das séries segue a lógica do estudo SIR de referência para manter comparabilidade. Rankings diários são transformados em séries numéricas de \emph{rank-score}, separando a dimensão de viralidade, associada ao Viral 50, e a dimensão de sucesso, associada ao Top 200. Essa transformação converte posições de ranking em valores comparáveis entre músicas e datas. Para uma música em uma posição $rank$ de um chart com posição máxima $\textit{max\_rank}$ (200 no Top 200 e 50 no Viral 50), o \emph{rank-score} é definido por
+
+\begin{equation}
+\label{eq:rank-score}
+\textit{rank\_score} = \textit{max\_rank} - rank + 1,
+\end{equation}
+
+de modo que a posição \#1 receba o valor máximo. Sobre essa série aplica-se uma média móvel de sete dias, seguida de normalização \emph{min-max} para o intervalo $[0,\,0{,}5]$; dias em que a música não aparece no chart recebem um valor mínimo de $0{,}001$, evitando problemas numéricos no ajuste do SIR. Cada música gera, portanto, duas séries de aproximadamente 1.895 dias: uma de viralidade e uma de sucesso.
+
+Músicas sem atributos acústicos completos não são removidas do universo. Em vez disso, os valores ausentes são imputados com a mediana e acompanhados por uma variável binária indicando ausência acústica. Essa decisão preserva a cobertura do dataset e permite que o modelo aprenda se a ausência de atributos carrega algum sinal sistemático.
+
+As variáveis contínuas usadas como atributos são padronizadas por escore-$z$. Essa normalização é aplicada a atributos como popularidade, streams, dias em chart e estatísticas agregadas de artistas. O objetivo é evitar que diferenças de escala dominem a passagem de mensagens na GNN.
+
+%=====================================================
+
+\section{Baseline SIR}
+
+O baseline SIR modela a trajetória de cada música como um processo de contágio agregado. A curva observada de \emph{rank-score} é ajustada por meio dos parâmetros $\beta$ e $\gamma$, que representam, respectivamente, taxa de adoção e taxa de remoção. A razão $R_0 = \beta / \gamma$ resume o potencial de espalhamento da música segundo a leitura epidemiológica.
+
+Esse baseline tem duas funções no projeto. A primeira é metodológica: reproduzir o resultado do estudo de referência e verificar se o pipeline local alcança erros compatíveis. A segunda é conceitual: oferecer uma comparação interpretável para avaliar se o aumento de complexidade trazido por GNNs heterogêneas se traduz em ganho empírico.
+
+A métrica principal para essa etapa é RMSE, calculada separadamente para viralidade e sucesso. O critério mínimo do estudo é obter desempenho compatível com o paper de referência dentro de uma margem aceitável. Uma vez validado esse baseline, a comparação passa a incluir a predição genuína de valores futuros, e não apenas o ajuste retroativo da curva observada.
+
+%=====================================================
+
+\section{Construção do grafo heterogêneo}
+
+O grafo proposto possui três tipos de nós: \texttt{music}, \texttt{artist} e \texttt{genre}. Essa escolha reflete a hipótese de que a difusão musical depende simultaneamente das propriedades da faixa, do histórico dos artistas associados e da proximidade cultural expressa por gêneros.
+
+% FIGURA: diagrama esquemático do grafo heterogêneo C-A-G (music-artist-genre) com os quatro tipos de aresta (performs, has_genre, cotrajectory, cooccurs) e setas tipadas. (adiada)
+
+As músicas são descritas por vetores de 15 dimensões. Esses vetores combinam nove atributos acústicos, popularidade, indicador de conteúdo explícito, tipo de música, total de streams, número de dias em chart e a flag de ausência acústica. Os artistas são descritos por quatro dimensões: número de hits, número de hits colaborativos, anos de presença em charts e número de gêneros associados. Os gêneros são representados por embeddings de 32 dimensões aprendidos durante o treinamento.
+
+O grafo contém quatro tipos principais de arestas. A relação \texttt{performs} conecta artistas a músicas e representa autoria ou participação. A relação \texttt{has\_genre} conecta artistas a gêneros. A relação \texttt{cotrajectory} conecta músicas que compartilham presença temporal nos charts e possuem trajetórias semelhantes. A relação \texttt{cooccurs} conecta gêneros que aparecem conjuntamente em agregações do dataset.
+
+Cada tipo de aresta possui atributos específicos. Em \texttt{performs}, são registrados papel do artista, posição na lista de artistas e primeira semana observada. Em \texttt{cotrajectory}, são registrados dias em conjunto, distância média de posição, tipo de chart e primeira semana observada. Em \texttt{cooccurs}, são registrados peso, popularidade média, streams médios e primeira semana observada. Essa estrutura permite que o modelo diferencie relações por semântica e por momento de observação.
+
+%=====================================================
+
+\section{Temporalidade e prevenção de vazamento}
+
+A temporalidade é incorporada por meio do atributo \texttt{first\_seen\_week}. Para qualquer semana $t$, o modelo só pode acessar arestas observadas até aquela semana. Assim, snapshots do grafo são obtidos por filtragem temporal, sem materializar todas as versões em disco.
+
+Essa escolha é importante porque relações como \texttt{cotrajectory} podem depender de observações futuras se forem calculadas de forma ingênua. Ao filtrar por primeira semana observada, a avaliação se aproxima do cenário real de previsão: em uma data $t$, o modelo deve prever o futuro usando apenas músicas, atributos e relações disponíveis até $t$.
+
+A formulação por snapshots semanais foi escolhida por compatibilidade com o custo computacional e com o grão temporal dos dados processados. Modelos temporais contínuos, como TGN, permanecem como alternativa para a Linha 2, na qual eventos de adoção de trends em vídeo curto podem ser representados com timestamps mais finos.
+
+%=====================================================
+
+\section{Modelo proposto}
+
+O modelo proposto combina uma GNN heterogênea com um componente recorrente temporal.
+
+%=====================================================
+
+\section{Protocolo experimental}
+
+A avaliação usa splits temporais. O período de 2017 a junho de 2020 é usado para treinamento; julho a dezembro de 2020 é usado para validação; e 2021 é reservado para teste. Essa divisão impede que o modelo seja avaliado em músicas ou relações futuras vistas durante o treinamento.
+
+Serão executados dois regimes de avaliação. O primeiro é o ajuste retroativo, voltado à comparação direta com o baseline SIR e com o trabalho de referência. Nesse modo, o objetivo é verificar se o modelo reproduz ou melhora a descrição das curvas já observadas. O segundo é a predição genuína, em que o modelo prevê \emph{rank-score} em horizontes futuros usando apenas dados disponíveis até o instante de previsão.
+
+Os horizontes planejados são $k \in \{1, 7, 14, 30\}$ dias. As métricas principais são RMSE por horizonte e acerto direcional, isto é, se o modelo acerta a tendência de subida ou queda da música. Quando viável, também será considerada uma métrica probabilística, como CRPS, caso o modelo seja estendido para produzir distribuições preditivas.
+
+%=====================================================
+
+%=====================================================
+
+\section{Síntese do capítulo}
+
+A metodologia proposta transforma séries de charts musicais em um problema de previsão temporal sobre grafo heterogêneo. O baseline SIR oferece uma referência interpretável e já consolidada na literatura brasileira recente. O grafo heterogêneo adiciona relações entre músicas, artistas e gêneros, enquanto a arquitetura temporal busca explorar a evolução dessas relações sem vazamento de informação futura. Com isso, a avaliação poderá responder se a estrutura heterogênea temporal melhora a modelagem de difusão musical em relação a modelos epidemiológicos populacionais.

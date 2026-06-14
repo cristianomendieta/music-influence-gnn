@@ -1,0 +1,72 @@
+\chapter{Resultados Parciais}
+\label{cap:resultados}
+
+Este capítulo apresenta os resultados já consolidados do estudo. O trabalho está organizado em etapas incrementais, das quais duas foram concluídas até o momento desta qualificação: a reprodução do baseline epidemiológico e a construção do grafo heterogêneo temporal. As etapas seguintes --- treinamento da GNN temporal e avaliação comparativa --- estão em andamento e são descritas como proposta no Capítulo~\ref{cap:proposta}. O objetivo aqui é duplo: demonstrar que o pipeline reproduz fielmente o baseline de referência e evidenciar que o grafo construído possui estrutura suficiente para justificar a abordagem neural.
+
+%=====================================================
+
+\section{Reprodução do baseline SIR}
+
+A primeira etapa teve como meta reproduzir o ajuste SIR do trabalho de referência \citep{oliveira2025brasnam} sobre os charts brasileiros, como pré-requisito metodológico para qualquer comparação posterior. O ajuste foi conduzido sobre o subconjunto \emph{viral$\cap$hit} --- músicas presentes simultaneamente no Top 200 e no Viral 50 ---, totalizando 1.981 músicas no pipeline local, valor próximo às 1.977 reportadas no trabalho original. Para cada música, as séries de viralidade e sucesso foram ajustadas de forma independente, estimando os parâmetros $\beta$, $\gamma$ e a razão $R_0 = \beta/\gamma$.
+
+A Tabela~\ref{tab:phase0-r4} compara as métricas obtidas com os alvos do trabalho de referência. Todos os critérios mínimos pré-acordados foram atingidos: o RMSE de viralidade e de sucesso ficou dentro da margem de 10\% dos valores de referência, o teste de Mann-Whitney manteve-se na mesma ordem de grandeza, e o ajuste convergiu para 100\% das séries.
+
+\begin{table}[htbp]
+\centering
+\caption{Critério de reprodução do baseline SIR.}
+\label{tab:phase0-r4}
+\begin{tabular}{p{4.5cm}p{2.5cm}p{2.5cm}p{2.0cm}}
+\hline
+\textbf{Métrica} & \textbf{Alvo (referência)} & \textbf{Obtido} & \textbf{Status} \\
+\hline
+RMSE viralidade & $\approx 0{,}028$ & $0{,}0289$ & Atingido \\
+RMSE sucesso & $\approx 0{,}052$ & $0{,}0471$ & Atingido \\
+Mann-Whitney $p$ & ordem $10^{-60}$ & $1{,}61 \times 10^{-39}$ & Atingido \\
+Subset viral$\cap$hit & $1.977$ & $1.981$ & Atingido \\
+Convergência do ajuste & $100\%$ & $100\%$ & Atingido \\
+\hline
+\end{tabular}
+\end{table}
+
+% FIGURA: réplica do boxplot da Fig. 3 do paper de referência (distribuição de RMSE por chart, SIR). (adiada)
+
+A reprodução fiel cumpre uma função metodológica central: sem ela, a comparação posterior entre GNN e SIR não seria defensável, pois não haveria garantia de que o pipeline de dados e de avaliação está alinhado ao da literatura. Além de validar o pipeline, a análise das séries trouxe duas observações que orientam as próximas etapas. A primeira é que músicas com permanência longa nos charts (mais de cem dias ativos, cerca de 37\% do Top 200) exibem padrão multi-onda que eleva o RMSE médio, ainda que a mediana permaneça dentro da tolerância; esse comportamento justifica conceitualmente as extensões wave-based da literatura \citep{oliveira2025asonam}, mesmo que não tenham sido reimplementadas aqui. A segunda é a necessidade de investigar, antes da submissão, eventuais diferenças entre média e mediana na forma como o trabalho de referência reporta o erro.
+
+%=====================================================
+
+\section{Grafo heterogêneo temporal}
+
+A segunda etapa construiu o grafo heterogêneo temporal descrito no Capítulo~\ref{cap:metodologia-linha1}. O grafo final contém 6.526 nós de música, 1.701 nós de artista e 530 nós de gênero. As contagens de música e gênero ficaram dentro das tolerâncias estabelecidas, e o número de artistas coincidiu exatamente com o esperado. O universo de música é maior que o subconjunto \emph{viral$\cap$hit} por decisão de projeto: incluir músicas presentes apenas no Top 200 enriquece o contexto estrutural disponível ao modelo.
+
+A Tabela~\ref{tab:phase1-edges} resume as contagens por tipo de aresta. A relação \texttt{cotrajectory} domina o grafo, com mais de 660 mil arestas, refletindo o grande número de pares de músicas que compartilham trajetória nos charts. As demais relações --- autoria, associação a gênero e coocorrência de gêneros --- contribuem com volumes menores, porém semanticamente distintos.
+
+\begin{table}[htbp]
+\centering
+\caption{Contagens por tipo de aresta no grafo heterogêneo.}
+\label{tab:phase1-edges}
+\begin{tabular}{p{7.0cm}r}
+\hline
+\textbf{Tipo de aresta} & \textbf{Contagem} \\
+\hline
+\texttt{artist} $\to$ \texttt{performs} $\to$ \texttt{music} & 9.274 \\
+\texttt{artist} $\to$ \texttt{has\_genre} $\to$ \texttt{genre} & 3.344 \\
+\texttt{music} $\to$ \texttt{cotrajectory} $\to$ \texttt{music} & 664.577 \\
+\texttt{genre} $\to$ \texttt{cooccurs} $\to$ \texttt{genre} & 9.866 \\
+\hline
+\end{tabular}
+\end{table}
+
+A análise topológica indica que o grafo possui estrutura rica, e não conexões aleatórias. O coeficiente de \textit{clustering} médio é elevado tanto em \texttt{cotrajectory} (0,5126) quanto em \texttt{cooccurs} (0,6040), sugerindo agrupamentos coesos de músicas e de gêneros. A detecção de comunidades por Louvain sobre o subgrafo de gêneros identificou agrupamentos coerentes, com as cinco maiores comunidades reunindo 136, 119, 96, 60 e 43 gêneros, e apenas cinco comunidades isoladas de pequeno porte. As distribuições de grau são fortemente assimétricas, característica esperada em redes culturais, com poucos nós de altíssimo grau e uma longa cauda de nós pouco conectados.
+
+% FIGURA: 4 painéis de distribuição de grau (um por tipo de aresta), escala log. (adiada)
+% FIGURA: top-5 comunidades Louvain coloridas no subgrafo de gêneros. (adiada)
+
+A construção foi acompanhada de um conjunto de validações automatizadas (nove critérios), que verificam desde a contagem de nós e a ausência de arestas órfãs até propriedades temporais e de integração com a arquitetura neural. Entre elas destacam-se a garantia de que todas as músicas do subconjunto \emph{viral$\cap$hit} estão presentes no grafo, a verificação de que o atributo \texttt{first\_seen\_week} permanece no intervalo válido em todas as arestas, e a confirmação de que o mecanismo de \textit{snapshots} temporais é monotônico --- isto é, o grafo observável até uma semana está contido no grafo observável em semanas posteriores, propriedade essencial para evitar vazamento temporal. Um \emph{smoke-test} confirmou ainda que a arquitetura HeteroGraphSAGE percorre o grafo e produz embeddings de música com a dimensão esperada, sem valores inválidos. Todos os critérios foram satisfeitos.
+
+%=====================================================
+
+\section{Discussão parcial}
+
+Os resultados consolidados sustentam duas conclusões parciais. Primeiro, o baseline epidemiológico foi reproduzido dentro das margens da literatura, validando o pipeline de dados e avaliação que servirá de base para a comparação com modelos neurais. Segundo, a topologia do grafo heterogêneo --- \textit{clustering} elevado, comunidades de gênero coerentes e distribuições de grau realistas --- constitui evidência prévia de que existe sinal estrutural a ser explorado por uma GNN. Em outras palavras, caso o modelo neural não supere o baseline, isso não poderá ser atribuído à ausência de estrutura no grafo.
+
+Resta como trabalho em andamento o treinamento da GNN heterogênea temporal e a avaliação comparativa nos dois regimes descritos na metodologia. Esses resultados, ainda não disponíveis, são o objeto central da próxima etapa do estudo e estão detalhados, em nível de proposta, no Capítulo~\ref{cap:proposta}.
