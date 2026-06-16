@@ -69,7 +69,7 @@ Em grafos heterogêneos, a passagem de mensagens precisa respeitar os tipos de n
 
 \section{Grafos temporais e aprendizado em grafos dinâmicos}
 
-Grafos temporais representam relações que mudam ao longo do tempo. Em vez de assumir uma estrutura fixa, o modelo observa eventos, snapshots ou sequências de interações. Essa perspectiva é essencial para difusão musical, pois o momento em que uma música aparece em um chart, passa a compartilhar trajetória com outra música ou se conecta a determinado contexto de gênero altera a interpretação da própria conexão.
+Grafos temporais representam relações que mudam ao longo do tempo. Em vez de assumir uma estrutura fixa, o modelo observa eventos, snapshots ou sequências de interações, preservando a ordem em que as conexões surgem. Essa perspectiva é essencial para a difusão musical, pois o significado de uma conexão depende de quando ela ocorre. Uma música pode entrar em um chart, passar a compartilhar trajetória com outra ou se associar a um gênero, e o momento em que cada um desses eventos acontece altera a forma como a relação deve ser interpretada.
 
 Há duas formas comuns de modelar grafos temporais. A primeira discretiza o tempo em snapshots, criando uma sequência de grafos estáticos. Essa abordagem é simples e compatível com GNNs tradicionais, sendo particularmente adequada quando os dados são naturalmente agregados por dias ou semanas. A segunda trata o grafo como uma sequência contínua de eventos temporais, preservando timestamps individuais e permitindo atualizar representações conforme novas interações ocorrem.
 

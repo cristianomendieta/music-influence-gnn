@@ -181,7 +181,8 @@ def main(seed: int = 42, smoke: bool = False) -> int:
     # ------------------------------------------------------------------
     _banner("Step 4/5 — Evaluate best model (forecasting + retroactive)")
 
-    best_model = MusicDiffusionGNN(g.metadata(), hidden=best_cfg.hidden,
+    best_model = MusicDiffusionGNN(g.metadata(), n_genre=g["genre"].num_nodes,
+                                   hidden=best_cfg.hidden,
                                    layers=best_cfg.layers, dropout=best_cfg.dropout)
     best_model.load_state_dict(best_state)
     best_model.eval()

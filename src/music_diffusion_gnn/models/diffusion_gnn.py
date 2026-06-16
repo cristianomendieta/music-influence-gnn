@@ -55,12 +55,19 @@ class MusicDiffusionGNN(nn.Module):
     def __init__(
         self,
         metadata: tuple,
+        n_genre: int,
         hidden: int = 128,
         layers: int = 3,
         dropout: float = 0.2,
+        genre_dim: int = 32,
     ) -> None:
         super().__init__()
         self.hidden = hidden
+        # Genres carry no descriptive attributes in the dataset, so they are
+        # represented by a learnable embedding optimized end-to-end with the
+        # rest of the model (registered here so it enters model.parameters()).
+        self.genre_emb = nn.Embedding(n_genre, genre_dim)
+        nn.init.normal_(self.genre_emb.weight, mean=0.0, std=0.1)
         self.encoder = HeteroSpatialEncoder(metadata, hidden=hidden, layers=layers, dropout=dropout)
         self.head = TemporalHead(hidden=hidden, dropout=dropout)
 
@@ -91,7 +98,11 @@ class MusicDiffusionGNN(nn.Module):
             snap = mask_until(g, w)
             if max_cotraj_edges is not None:
                 snap = _subsample_cotraj(snap, max_cotraj_edges)
-            bank[w] = self.encoder(snap.x_dict, snap.edge_index_dict)
+            # Override the graph's (unused) static genre features with the
+            # learnable embedding so genre identity is trained end-to-end.
+            x_dict = dict(snap.x_dict)
+            x_dict["genre"] = self.genre_emb.weight
+            bank[w] = self.encoder(x_dict, snap.edge_index_dict)
         return bank
 
     def predict(

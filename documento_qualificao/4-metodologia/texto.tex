@@ -1,11 +1,11 @@
 \chapter{Dados e Metodologia}
-\label{cap:metodologia-linha1}
+\label{cap:metodologia}
 
 Este capítulo descreve os dados e o protocolo metodológico do estudo, dedicado à difusão musical em charts brasileiros. A organização parte do pressuposto de que os conceitos de SIR, grafos heterogêneos, redes neurais em grafos e grafos temporais já foram apresentados na fundamentação teórica. Assim, o foco aqui é operacional: quais dados são usados, como eles são transformados em um grafo heterogêneo temporal, quais modelos serão comparados e como a avaliação será conduzida.
 
 %=====================================================
 
-\section{Visão geral da linha experimental}
+\section{Visão geral do desenho experimental}
 
 O estudo tem como objetivo comparar um baseline epidemiológico, baseado em SIR, com uma arquitetura neural em grafo heterogêneo temporal para previsão de difusão musical. O domínio empírico é composto por músicas presentes em charts brasileiros de streaming, especialmente Top 200 e Viral 50. A hipótese operacional é que a estrutura relacional entre músicas, artistas e gêneros acrescenta informação preditiva que não está disponível em modelos ajustados apenas sobre curvas agregadas.
 
@@ -17,13 +17,14 @@ O desenho experimental segue três etapas. Primeiro, reproduz-se o baseline SIR 
 
 A base principal é o MGD+, que fornece metadados musicais e atributos acústicos associados a músicas e artistas \citep{seufitelli2023dsw}. Esses dados são combinados a séries de charts brasileiros do Spotify, em particular rankings diários de Top 200 e Viral 50. O Top 200 é usado como aproximação de sucesso ou popularidade consolidada, enquanto o Viral 50 representa sinais de crescimento e circulação viral.
 
-O universo atual do estudo contém 6.526 músicas, 1.701 artistas e 530 gêneros. Esses elementos formam os três tipos de nós do grafo heterogêneo. As músicas carregam atributos acústicos, indicadores de popularidade e variáveis derivadas dos charts; os artistas carregam estatísticas agregadas de presença em charts e diversidade de gêneros; os gêneros são representados por embeddings aprendidos durante o treinamento.
+O universo atual do estudo contém 6.526 músicas, 1.701 artistas e 530 gêneros. Esses elementos formam os três tipos de nós do grafo heterogêneo. As músicas carregam atributos acústicos, indicadores de popularidade e variáveis derivadas dos charts; os artistas carregam estatísticas agregadas de presença em charts e diversidade de gêneros; os gêneros, por não terem atributos próprios no dataset, são representados por embeddings aprendidos pelo próprio modelo durante o treinamento (Seção~\ref{sec:modelo-proposto}).
 
 A cobertura temporal considerada vai de 2017 a 2021. Essa janela permite separar treinamento, validação e teste de forma cronológica, evitando que informações futuras contaminem a avaliação. A separação temporal também é compatível com a formulação de snapshots semanais usada no grafo.
 
 %=====================================================
 
 \section{Pré-processamento das séries musicais}
+\label{sec:preproc}
 
 O pré-processamento das séries segue a lógica do estudo SIR de referência para manter comparabilidade. Rankings diários são transformados em séries numéricas de \emph{rank-score}, separando a dimensão de viralidade, associada ao Viral 50, e a dimensão de sucesso, associada ao Top 200. Essa transformação converte posições de ranking em valores comparáveis entre músicas e datas. Para uma música em uma posição $rank$ de um chart com posição máxima $\textit{max\_rank}$ (200 no Top 200 e 50 no Viral 50), o \emph{rank-score} é definido por
 
@@ -32,9 +33,9 @@ O pré-processamento das séries segue a lógica do estudo SIR de referência pa
 \textit{rank\_score} = \textit{max\_rank} - rank + 1,
 \end{equation}
 
-de modo que a posição \#1 receba o valor máximo. Sobre essa série aplica-se uma média móvel de sete dias, seguida de normalização \emph{min-max} para o intervalo $[0,\,0{,}5]$; dias em que a música não aparece no chart recebem um valor mínimo de $0{,}001$, evitando problemas numéricos no ajuste do SIR. Cada música gera, portanto, duas séries de aproximadamente 1.895 dias: uma de viralidade e uma de sucesso.
+de modo que a posição \#1 receba o valor máximo. Sobre essa série aplica-se uma média móvel de sete dias, seguida de normalização \emph{min-max} para o intervalo $[0,\,0{,}5]$; dias em que a música não aparece no chart recebem um valor mínimo de $0{,}001$, evitando problemas numéricos no ajuste do SIR. Cada música gera, portanto, duas séries de aproximadamente 1.900 dias: uma de viralidade e uma de sucesso.
 
-Músicas sem atributos acústicos completos não são removidas do universo. Em vez disso, os valores ausentes são imputados com a mediana e acompanhados por uma variável binária indicando ausência acústica. Essa decisão preserva a cobertura do dataset e permite que o modelo aprenda se a ausência de atributos carrega algum sinal sistemático.
+Músicas sem atributos acústicos completos não são removidas do universo. Em vez disso, os valores ausentes são imputados com a mediana e acompanhados por um indicador binário de ausência acústica. Essa decisão preserva a cobertura do dataset e permite que o modelo aprenda se a ausência de atributos carrega algum sinal sistemático.
 
 As variáveis contínuas usadas como atributos são padronizadas por escore-$z$. Essa normalização é aplicada a atributos como popularidade, streams, dias em chart e estatísticas agregadas de artistas. O objetivo é evitar que diferenças de escala dominem a passagem de mensagens na GNN.
 
@@ -46,17 +47,18 @@ O baseline SIR modela a trajetória de cada música como um processo de contági
 
 Esse baseline tem duas funções no projeto. A primeira é metodológica: reproduzir o resultado do estudo de referência e verificar se o pipeline local alcança erros compatíveis. A segunda é conceitual: oferecer uma comparação interpretável para avaliar se o aumento de complexidade trazido por GNNs heterogêneas se traduz em ganho empírico.
 
-A métrica principal para essa etapa é RMSE, calculada separadamente para viralidade e sucesso. O critério mínimo do estudo é obter desempenho compatível com o paper de referência dentro de uma margem aceitável. Uma vez validado esse baseline, a comparação passa a incluir a predição genuína de valores futuros, e não apenas o ajuste retroativo da curva observada.
+A métrica principal para essa etapa é o RMSE, calculado separadamente para viralidade e sucesso. O critério mínimo do estudo é obter desempenho compatível com o paper de referência dentro de uma margem aceitável. Uma vez validado esse baseline, a comparação passa a incluir a predição genuína de valores futuros, e não apenas o ajuste retroativo da curva observada.
 
 %=====================================================
 
 \section{Construção do grafo heterogêneo}
+\label{sec:grafo}
 
 O grafo proposto possui três tipos de nós: \texttt{music}, \texttt{artist} e \texttt{genre}. Essa escolha reflete a hipótese de que a difusão musical depende simultaneamente das propriedades da faixa, do histórico dos artistas associados e da proximidade cultural expressa por gêneros.
 
 % FIGURA: diagrama esquemático do grafo heterogêneo C-A-G (music-artist-genre) com os quatro tipos de aresta (performs, has_genre, cotrajectory, cooccurs) e setas tipadas. (adiada)
 
-As músicas são descritas por vetores de 12 dimensões, compostos por nove atributos acústicos, indicador de conteúdo explícito, tipo de música e uma flag de ausência acústica. Os artistas são descritos por uma única dimensão: o número de gêneros associados. Os gêneros são representados por embeddings de 32 dimensões aprendidos durante o treinamento. Deliberadamente, restringem-se as features de nó a metadados estáticos: agregados calculados sobre toda a janela temporal (como total de streams, número de dias em chart, popularidade consolidada e contagens de hits por artista) são excluídos, pois, sendo reaplicados de forma idêntica em todos os \emph{snapshots}, introduziriam vazamento de informação futura no vetor de cada nó (Seção~\ref{sec:vazamento}).
+As músicas são descritas por vetores de 12 dimensões, compostos por nove atributos acústicos, indicador de conteúdo explícito, tipo de música e um indicador binário de ausência acústica. Os artistas são descritos por uma única dimensão: o número de gêneros associados. Como os gêneros não possuem atributos descritivos no dataset, são representados por embeddings de 32 dimensões inicializados aleatoriamente e aprendidos como parâmetros do modelo, junto com os demais pesos, durante o treinamento (Seção~\ref{sec:modelo-proposto}). Deliberadamente, restringem-se as features de nó a metadados estáticos: agregados calculados sobre toda a janela temporal (como total de streams, número de dias em chart, popularidade consolidada e contagens de hits por artista) são excluídos, pois, sendo reaplicados de forma idêntica em todos os \emph{snapshots}, introduziriam vazamento de informação futura no vetor de cada nó (Seção~\ref{sec:vazamento}).
 
 O grafo contém quatro tipos principais de arestas. A relação \texttt{performs} conecta artistas a músicas e representa autoria ou participação. A relação \texttt{has\_genre} conecta artistas a gêneros. A relação \texttt{cotrajectory} conecta músicas que compartilham presença temporal nos charts e possuem trajetórias semelhantes. A relação \texttt{cooccurs} conecta gêneros que aparecem conjuntamente em agregações do dataset.
 
@@ -73,7 +75,7 @@ Essa escolha é importante porque relações como \texttt{cotrajectory} podem de
 
 A prevenção de vazamento não se restringe às arestas. Como o mecanismo de \emph{snapshots} filtra apenas arestas e reutiliza os vetores de nó inalterados em cada semana, qualquer atributo de nó derivado da trajetória de uma música ou artista nos charts (número total de dias em chart, streams acumulados ou contagens de hits ao longo do período) carregaria informação de toda a janela observada, inclusive do período de teste. Por isso, os vetores de nó são restritos a metadados estáticos (atributos acústicos, tipo e marcadores categóricos), e tais agregados \emph{full-series} são deliberadamente excluídos da representação.
 
-A formulação por snapshots semanais foi escolhida por compatibilidade com o custo computacional e com o grão temporal dos dados processados. Modelos temporais contínuos, como TGN, permanecem como alternativa para a Linha 2, na qual eventos de adoção de trends em vídeo curto podem ser representados com timestamps mais finos.
+A formulação por snapshots semanais foi escolhida por compatibilidade com o custo computacional e com o grão temporal dos dados processados. Modelos temporais contínuos, como o TGN, permanecem como alternativa para trabalhos futuros, em que eventos de adoção de tendências em vídeo curto poderiam ser representados com resolução temporal mais fina.
 
 %=====================================================
 
@@ -84,7 +86,7 @@ O modelo proposto, denominado \textsc{MusicDiffusionGNN}, combina uma rede neura
 
 \subsection{Codificador espacial heterogêneo}
 
-Seja $G_t = \textsc{mask\_until}(G, t)$ o snapshot do grafo contendo apenas as arestas cuja primeira observação ocorre até a semana $t$ (Seção~\ref{cap:metodologia-linha1}, atributo \texttt{first\_seen\_week}). O codificador é uma rede \emph{HeteroGraphSAGE} \citep{hamilton2017graphsage} com $L$ camadas de passagem de mensagens, em que cada tipo de relação $r \in \mathcal{R}$ possui parâmetros próprios. Para um nó $v$ e uma relação $r$ na camada $\ell$, a mensagem agregada dos vizinhos segue a formulação do GraphSAGE:
+Seja $G_t = \textsc{mask\_until}(G, t)$ o snapshot do grafo contendo apenas as arestas cuja primeira observação ocorre até a semana $t$ (Seção~\ref{sec:vazamento}, atributo \texttt{first\_seen\_week}). O codificador é uma rede \emph{HeteroGraphSAGE} \citep{hamilton2017graphsage} com $L$ camadas de passagem de mensagens, em que cada tipo de relação $r \in \mathcal{R}$ possui parâmetros próprios. Para um nó $v$ e uma relação $r$ na camada $\ell$, a mensagem agregada dos vizinhos segue a formulação do GraphSAGE:
 
 \begin{equation}
 \label{eq:sage-rel}
@@ -99,7 +101,7 @@ Seja $G_t = \textsc{mask\_until}(G, t)$ o snapshot do grafo contendo apenas as a
 \mathbf{h}_v^{(\ell)} = \operatorname{ReLU}\!\Bigg( \sum_{r \,\in\, \mathcal{R}(v)} \mathbf{h}_v^{(r,\ell)} \Bigg),
 \end{equation}
 
-\noindent onde $\mathcal{R}(v)$ é o conjunto de relações que têm o tipo de $v$ como destino. Entre camadas consecutivas aplica-se \emph{dropout} às representações intermediárias. As representações iniciais $\mathbf{h}_v^{(0)}$ correspondem aos vetores de atributos de cada tipo de nó descritos na Seção~\ref{cap:metodologia-linha1} (12 dimensões para música, 1 para artista e um \emph{embedding} aprendido de 32 dimensões para gênero). Após $L$ camadas, a saída de interesse é a matriz de \emph{embeddings} de música $\mathbf{Z}^{(t)}_{\text{music}} \in \mathbb{R}^{N_{\text{music}} \times d}$, onde $d$ é a dimensão oculta.
+\noindent onde $\mathcal{R}(v)$ é o conjunto de relações que têm o tipo de $v$ como destino. Entre camadas consecutivas aplica-se \emph{dropout} às representações intermediárias. As representações iniciais $\mathbf{h}_v^{(0)}$ correspondem aos vetores de atributos de cada tipo de nó descritos na Seção~\ref{sec:grafo} (12 dimensões para música, 1 para artista e um \emph{embedding} aprendido de 32 dimensões para gênero). Após $L$ camadas, a saída de interesse é a matriz de \emph{embeddings} de música $\mathbf{Z}^{(t)}_{\text{music}} \in \mathbb{R}^{N_{\text{music}} \times d}$, onde $d$ é a dimensão oculta.
 
 Além das quatro relações semânticas (\texttt{performs}, \texttt{has\_genre}, \texttt{cotrajectory} e \texttt{cooccurs}), inclui-se a relação reversa $\texttt{genre} \to \texttt{artist}$ derivada de \texttt{has\_genre}. Essa adição permite que o sinal de gênero, que de outra forma só receberia mensagens, propague-se de volta aos artistas e, em uma camada subsequente, alcance as músicas. Essa é uma das razões para empilhar $L \geq 2$ camadas: a informação de gênero só chega às músicas após dois passos de mensagem (\texttt{genre} $\to$ \texttt{artist} $\to$ \texttt{music}).
 
@@ -123,7 +125,7 @@ Para prever o \emph{rank-score} de uma música $i$ em uma semana-alvo $w$ e em u
 \hat{y}_i = 0{,}5 \cdot \sigma\big( \operatorname{MLP}(\mathbf{h}_i) \big),
 \end{equation}
 
-\noindent garantindo $\hat{y}_i \in [0,\,0{,}5]$ sem necessidade de truncamento posterior, em consonância com a normalização do \emph{rank-score} descrita na Seção~\ref{cap:metodologia-linha1}.
+\noindent garantindo $\hat{y}_i \in [0,\,0{,}5]$ sem necessidade de truncamento posterior, em consonância com a normalização do \emph{rank-score} descrita na Seção~\ref{sec:preproc}.
 
 \subsection{Função de perda, otimização e regularização}
 
@@ -153,7 +155,7 @@ Teto de arestas \texttt{cotrajectory} por snapshot & $3{,}0 \times 10^{4}$ \\
 
 \section{Protocolo experimental}
 
-A avaliação usa \emph{splits} temporais sobre a série agregada por semana. O \emph{rank-score} diário é consolidado em um alvo semanal $y_{\text{week}}(i, c, w)$, definido como a média dos valores diários da música $i$ no chart $c$ dentro da semana ISO $w$. Essa agregação alinha o grão da série ao grão das relações do grafo, cujas arestas têm resolução semanal (Seção~\ref{cap:metodologia-linha1}), e reduz o comprimento das séries de $\sim$1.900 para $\sim$260 passos. O período até junho de 2020 é usado para treinamento; de julho a dezembro de 2020, para validação; e 2021 é reservado para teste. Como os limites de \emph{split} são definidos por semana, cada semana pertence a exatamente uma partição, impedindo que o modelo seja avaliado sobre instantes vistos durante o treinamento.
+A avaliação usa \emph{splits} temporais sobre a série agregada por semana. O \emph{rank-score} diário é consolidado em um alvo semanal $y_{\text{week}}(i, c, w)$, definido como a média dos valores diários da música $i$ no chart $c$ dentro da semana ISO $w$. Essa agregação alinha o grão da série ao grão das relações do grafo, cujas arestas têm resolução semanal (Seção~\ref{sec:vazamento}), e reduz o comprimento das séries de $\sim$1.900 para $\sim$260 passos. O período até junho de 2020 é usado para treinamento; de julho a dezembro de 2020, para validação; e 2021 é reservado para teste. Como os limites de \emph{split} são definidos por semana, cada semana pertence a exatamente uma partição, impedindo que o modelo seja avaliado sobre instantes vistos durante o treinamento.
 
 Serão executados dois regimes de avaliação que compartilham o mesmo modelo e os mesmos pesos. O primeiro é a \emph{previsão genuína} (\emph{forecasting}): o modelo prevê $y_{\text{week}}$ na partição futura mantida em reserva, usando apenas a janela causal de semanas anteriores ao instante de previsão. O segundo é o \emph{ajuste retroativo}: a curva de cada música é reconstruída de forma \emph{teacher-forced} ao longo de todo o seu período ativo, aproximando-se do ajuste \emph{in-sample} do baseline SIR. O regime retroativo cumpre função comparativa com o baseline epidemiológico, enquanto o regime de previsão mede a capacidade preditiva efetiva sobre dados não vistos.
 

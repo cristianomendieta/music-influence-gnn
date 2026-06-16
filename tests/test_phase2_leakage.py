@@ -89,7 +89,7 @@ def test_encode_weeks_uses_past_snapshots(graph, small_samples):
     from music_diffusion_gnn.models.diffusion_gnn import MusicDiffusionGNN
     from music_diffusion_gnn.training.trainer import _distinct_window_weeks
 
-    model = MusicDiffusionGNN(graph.metadata(), hidden=64, layers=2, dropout=0.0)
+    model = MusicDiffusionGNN(graph.metadata(), n_genre=graph["genre"].num_nodes, hidden=64, layers=2, dropout=0.0)
 
     # Take a small batch and verify weeks in bank are all < target_week
     batch = small_samples[:16]
