@@ -1,0 +1,6 @@
+[14:20:07] device=cpu  mode=single  smoke=False  resume=True
+[14:20:13] grafo 8757 nós | train/val/test rows = 324710/79620/193342
+[14:20:13] fronteiras: train<= 182  val..207  test>= 208
+[14:20:13] 1 config(s) a treinar
+[14:20:17]   samples W=4: train=321660 val=79336 test=192764
+[14:20:17]   [1/1] W4_h64_l2_lr1e-03 ...
