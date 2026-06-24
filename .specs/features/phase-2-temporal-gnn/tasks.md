@@ -520,3 +520,79 @@ print('persistence_predict importável')"
 | C6/C7 | T11, T15 |
 | C8 | T11, T14 |
 | C9 | T14 |
+
+---
+
+# Revisão R1 (2026-06-23) — injeção de popularidade defasada
+
+> v1 reprovou C6/C7 (GNN perde p/ persistência nas 24 configs). Causa-raiz: modelo cego a `y(w-1)`.
+> Correção aprovada: feature de nó de popularidade (difusão) + cabeça residual ancorada na persistência.
+> Ver [`design.md` → Revisão R1](design.md#revisão-r1-2026-06-23--injeção-de-popularidade-defasada).
+> Cada task = 1 commit. Stack PyG puro — sem MCPs/Skills.
+
+### Wave R1 — sequencial (cada uma habilita a próxima)
+```
+R1.T1 (build_pop_bank) ─┐
+R1.T2 (head residual)  ─┼→ R1.T3 (diffusion_gnn) → R1.T4 (trainer) → R1.T5 (tests) → R1.T6 (notebook) → R1.T7 (smoke) → R1.T8 (grid)
+```
+
+## R1.T1 — `build_pop_bank` em `training/dataset.py`
+- **What:** função que monta `pop_bank` denso `(n_weeks, n_music, 2)`; `[w, idx, chart]=y_week`, 0 caso ausente.
+- **Where:** `src/music_diffusion_gnn/training/dataset.py`.
+- **Reuses:** `node_id_map.json` (`music.spotify_id_to_idx`), `_CHART_CODE`.
+- **Done when:** retorna `torch.float32`, shape `(261, n_music, 2)`; soma > 0; valores ∈ [0,0.5].
+- **Tests:** coberto por R1.T5/R1.T7.
+
+## R1.T2 — cabeça residual em `models/temporal_head.py`
+- **What:** `forward` retorna **Δ cru** (remover `0.5*sigmoid`); **zero-init** da última `Linear` (weight+bias=0).
+- **Where:** `src/music_diffusion_gnn/models/temporal_head.py`.
+- **Done when:** com pesos zero-init, `forward` retorna tensor ≈0 (B,); range garantido depois no `predict` via clamp.
+
+## R1.T3 — injeção + resíduo em `models/diffusion_gnn.py`
+- **What:** `__init__(..., pop_bank=None)` → `register_buffer`; `encode_weeks` concatena `pop_bank[w]` às features de música; `predict` faz `ŷ = clamp(y_prev + Δ, 0, 0.5)` com `y_prev = pop_bank[w-1, song, chart]`. `pop_bank=None` → fallback (resíduo base 0).
+- **Where:** `src/music_diffusion_gnn/models/diffusion_gnn.py`.
+- **Depends on:** R1.T2.
+- **Done when:** `predict` retorna (B,) ∈ [0,0.5]; com `pop_bank` e Δ=0 (init) → `ŷ == y_prev` (= persistência).
+- **Reqs:** R1-D1, R1-D2, R1-D4.
+
+## R1.T4 — repassar `pop_bank` no `training/trainer.py`
+- **What:** `pop_bank` opcional em `train_one`, `run_grid`, `evaluate` → passado a `MusicDiffusionGNN(...)`.
+- **Where:** `src/music_diffusion_gnn/training/trainer.py`.
+- **Depends on:** R1.T3.
+- **Done when:** assinaturas aceitam `pop_bank=None`; construtor recebe; sem quebra de chamadas existentes.
+
+## R1.T5 — testes
+- **What:** atualizar `tests/test_phase2_forward.py` (range via clamp continua) e adicionar teste: com `pop_bank`, modelo no init reproduz persistência (`ŷ ≈ pop_bank[w-1,...]`). Reforçar leakage: `w-1 < target_week`.
+- **Where:** `tests/test_phase2_forward.py`, `tests/test_phase2_leakage.py`.
+- **Depends on:** R1.T3.
+- **Done when:** `pytest tests/test_phase2_*.py` verde.
+- **Reqs:** C2, C3, C4.
+
+## R1.T6 — notebook
+- **What:** construir `pop_bank` 1× (após `weekly`) e passar a `train_one`/`run_grid`/`evaluate`/`MusicDiffusionGNN`.
+- **Where:** `notebooks/phase2_pipeline_treino.ipynb`.
+- **Depends on:** R1.T4.
+- **Done when:** células de treino/eval/grid/save referenciam `pop_bank`.
+
+## R1.T7 — smoke (gate antes do grid)
+- **What:** subset pequeno + poucas épocas; GNN deve **empatar ou superar** persistência no val.
+- **Depends on:** R1.T5.
+- **Done when:** `val_mse_gnn ≤ ~persist_mse` (prova que o resíduo funciona); senão revisar antes de gastar ~3h no grid.
+
+## R1.T8 — grid completo + C6/C7
+- **What:** rerodar 24 configs; conferir C6/C7; registrar em STATE.md.
+- **Depends on:** R1.T7.
+- **Done when:** `grid_results.parquet` + `summary.md` na melhor config; veredito C6/C7 documentado.
+- **Reqs:** C5, C6, C7, C8, C9.
+
+## Traceability R1
+| Req/Critério | Task |
+|---|---|
+| R1-D1 (feature de nó) | R1.T1, R1.T3 |
+| R1-D2 (resíduo) | R1.T2, R1.T3 |
+| R1-D3 (zero-init) | R1.T2 |
+| R1-D4 (y_prev do banco) | R1.T3 |
+| C2 (leakage) | R1.T5 |
+| C3 (range) | R1.T3, R1.T5 |
+| C5 (grid) | R1.T8 |
+| C6/C7 (vs persistência) | R1.T7, R1.T8 |

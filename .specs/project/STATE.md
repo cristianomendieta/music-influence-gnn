@@ -115,6 +115,29 @@
   Grid 24 configs × ~30 épocas estimado em 10–15h (rodando em background, PID 292329).
   C6/C7 pendentes (GNN não bateu persistência no smoke test com 5 épocas/50 músicas — esperado).
 
+- **2026-06-23** — **Phase 2 v1 REPROVOU C6/C7.** Grid completo (24 configs, via notebook em
+  Colab T4) rodou; **nenhuma config supera a persistência ingênua** `ŷ(w)=y(w-1)`. Melhor da grid
+  `W12_h128_l3_lr5e-04` val_mse≈0.00506 vs persistência≈0.0009 (~5× pior). `summary.md` foi gerado
+  numa config fraca (`W4_h64_l2_lr1e-03`, 16ª/24). **Causa-raiz (estrutural):** o modelo nunca recebia
+  o alvo defasado `y(w-1)` — entrada da GRU era só o embedding estrutural; features de nó música são
+  acústicas estáticas. Logo errava o *nível* da série. Plano B do ROADMAP (HGT/Transformer) não
+  resolveria (é problema de feature, não de capacidade).
+
+- **2026-06-23** — **Phase 2 Revisão R1 especificada + implementada.** Decisão: injetar
+  popularidade defasada. R1-D1 **feature de nó dinâmica** `pop_bank[w]` (2 canais viral50/top200)
+  antes do HeteroSAGE → popularidade difunde pela rede de influência (estrutura load-bearing).
+  R1-D2 **cabeça residual** `ŷ=clamp(y_prev+Δ,0,0.5)`, Δ=GRU+MLP. R1-D3 **zero-init** da última
+  Linear → no init Δ=0 → reproduz a persistência exatamente. R1-D4 `y_prev` lido do `pop_bank[w-1]`
+  (= valor da persistência; **não** muda `build_samples`). Sem leakage (`w'≤w-1`). Detalhes em
+  `design.md` → Revisão R1 e `tasks.md` → Wave R1 (R1.T1–R1.T8).
+  **Componentes alterados:** `training/dataset.py` (+`build_pop_bank`), `models/temporal_head.py`
+  (Δ cru + zero-init), `models/diffusion_gnn.py` (`pop_bank` buffer + injeção + resíduo),
+  `training/trainer.py` (repassa `pop_bank`), `scripts/run_phase2.py`, `tests/test_phase2_forward.py`
+  (+`test_residual_starts_at_persistence`, +`test_pop_injection_forward_runs`), notebook.
+  **Smoke (gate R1.T7) PASSOU:** subset 60 músicas, 7 épocas CPU → GNN **bate** persistência nos
+  dois regimes (viral50 0.000684 vs 0.000722; top200 0.000537 vs 0.000540). 8/8 testes phase2 verdes.
+  Pendente: re-rodar o grid completo (R1.T8) e conferir C6/C7 no dataset cheio.
+
 ## Blockers
 
 - *(nenhum)*
@@ -133,6 +156,17 @@
   está dentro da tolerância ±10%. Discrepância restante é atribuída ao subset diferente
   (1179 vs 1977 músicas) e ao período mais curto. Documentado como limitação aceita.
 
+- **2026-06-23** — Persistência ingênua `ŷ(w)=y(w-1)` é uma baseline **fortíssima** em séries
+  semanais suaves e autocorrelacionadas. Um forecaster temporal que não recebe `y(w-1)` como
+  entrada (direta ou via feature de nó) tende a perder feio (erra o nível). Lição de arquitetura:
+  ancorar a predição na persistência (parametrização **residual**) e dar acesso ao histórico de
+  popularidade — daí a estrutura só precisa aprender a *correção*.
+
+- **2026-06-23** — **GPU local (GTX 1050 Ti, sm_61) é incompatível** com o PyTorch instalado na
+  `.venv` (cu130, suporta sm_75+). Treino local cai para **CPU** (smoke: ~33s/época, subset 60).
+  O notebook é feito para **Colab T4 (sm_75)**, onde a GPU funciona. Para grid local completo,
+  contar com CPU (horas) ou instalar uma wheel de torch compatível com sm_61.
+
 ## Todos
 
 - [x] Especificar Phase 0 (`.specs/features/phase-0-baselines/`).
@@ -147,8 +181,13 @@
 - [ ] Executar `/tlc-spec-driven design phase-2-temporal-gnn` (resolver OQ1–OQ6: semanas off-chart, cache de embeddings, padding, fit retroativo, edge subsampling, batching causal).
 - [x] Executar `/tlc-spec-driven tasks phase-2-temporal-gnn` (15 tasks atômicas em 6 waves). Concluído em 2026-05-30.
 - [~] Executar `/tlc-spec-driven implement phase-2-temporal-gnn` — T1–T14 concluídas 2026-05-31; T15 (grid) rodando.
-- [ ] Conferir C1–C9 quando grid terminar; registrar resultados em STATE.md.
-- [ ] Se C6/C7 falhar: ativar Plano B (HGT ou Transformer head).
+- [x] Conferir C1–C9 quando grid terminar — grid v1 reprovou C6/C7 (GNN perde p/ persistência). 2026-06-23.
+- [~] Plano B (HGT/Transformer) **não acionado**: causa-raiz é feature (cego a `y(w-1)`), não capacidade. Substituído pela Revisão R1.
+- [x] **Revisão R1** especificada + implementada (R1.T1–R1.T6) + smoke (R1.T7) passou. 2026-06-23.
+- [ ] **R1.T8**: re-rodar grid completo no **Colab (T4)** com a nova arquitetura e conferir C6/C7.
+      Notebook agora grava em **`phase2_experimentos_v2`** (Drive `.../phase2_experimentos_v2`) →
+      preserva os resultados v1 e roda as 24 configs do zero (sem retomada das antigas).
+- [ ] Depois do grid v2: registrar números C6/C7 em STATE.md; comparar v1 vs v2.
 
 ## Deferred ideas
 

@@ -56,6 +56,7 @@ def main(seed: int = 42, smoke: bool = False) -> int:
 
     from music_diffusion_gnn.training.dataset import (
         aggregate_weekly,
+        build_pop_bank,
         build_samples,
         temporal_split,
     )
@@ -87,6 +88,9 @@ def main(seed: int = 42, smoke: bool = False) -> int:
     ts_df = pd.read_parquet(PROCESSED / "timeseries.parquet")
     weekly_df = aggregate_weekly(ts_df)
     splits_df = temporal_split(weekly_df)
+    # R1 (2026-06-23): lagged-popularity bank for node-feature injection + residual head.
+    pop_bank = build_pop_bank(weekly_df, PROCESSED_GRAPH / "node_id_map.json",
+                              n_music=g["music"].num_nodes)
     logger.info(f"Timeseries aggregated: {weekly_df.shape} [{_elapsed(t0)}]")
     print(f"  train={len(splits_df['train'])} val={len(splits_df['val'])} test={len(splits_df['test'])} rows")
 
@@ -147,7 +151,7 @@ def main(seed: int = 42, smoke: bool = False) -> int:
     for i, cfg in enumerate(grid_with_seed):
         print(f"  [{i+1}/{len(grid_with_seed)}] {cfg} ...", flush=True)
         splits = _make_splits(cfg)
-        result = _train_one(cfg, splits, g)
+        result = _train_one(cfg, splits, g, pop_bank=pop_bank)
         print(f"    val_mse={result.val_mse:.6f}  params={result.n_params}  t={result.elapsed_sec:.1f}s")
 
         rows.append({
@@ -183,7 +187,8 @@ def main(seed: int = 42, smoke: bool = False) -> int:
 
     best_model = MusicDiffusionGNN(g.metadata(), n_genre=g["genre"].num_nodes,
                                    hidden=best_cfg.hidden,
-                                   layers=best_cfg.layers, dropout=best_cfg.dropout)
+                                   layers=best_cfg.layers, dropout=best_cfg.dropout,
+                                   pop_bank=pop_bank)
     best_model.load_state_dict(best_state)
     best_model.eval()
 

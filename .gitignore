@@ -19,8 +19,6 @@ lightning_logs/
 .vscode/
 .idea/
 
-.claude
-
 # Data is ignored, EXCEPT the 3 processed artifacts the Colab notebook clones.
 # Negations come last and re-include each parent dir; the hetero_full.pt negation
 # also overrides the global *.pt rule above.

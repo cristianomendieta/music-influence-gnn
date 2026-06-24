@@ -1,9 +1,15 @@
 # Phase 2 — Design (Temporal GNN heterogêneo)
 
 **Spec:** [`spec.md`](spec.md) · **Context:** [`context.md`](context.md)
-**Status:** Draft
+**Status:** Revisão R1 (2026-06-23) — injeção de popularidade defasada
 **Depende de:** Phase 1 (`hetero_full.pt`, `mask_until`, `week_index`) + Phase 0 (`timeseries.parquet`)
 **Bloqueia:** Phase 3 (avaliação dupla)
+
+> **⚠️ Revisão R1 (2026-06-23):** a 1ª implementação (v1) **perdeu para a persistência
+> ingênua em todas as 24 configs do grid** (C6/C7 reprovados). Causa-raiz e correção
+> aprovada estão na seção **[Revisão R1](#revisão-r1-2026-06-23--injeção-de-popularidade-defasada)**
+> no fim deste arquivo. As seções abaixo descrevem a arquitetura v1 (mantidas como
+> registro); leia a R1 para o que muda.
 
 ---
 
@@ -238,3 +244,70 @@ class Config:
 1. Comparabilidade semanal↔diária com SIR resolvida só na Phase 3 (T-gran).
 2. Custo de memória do banco de snapshots depende de B×(B+W) semanas distintas — medir na 1ª execução; reduzir batch se OOM.
 3. Se nenhuma config superar persistência, acionar Plano B do ROADMAP (HGT no lugar de HeteroSAGE / Transformer no lugar de GRU) — fora do escopo desta fase.
+
+---
+
+# Revisão R1 (2026-06-23) — injeção de popularidade defasada
+
+## Resultado da v1 e causa-raiz
+
+A v1 (T1–T15) rodou o grid completo (24 configs) via `notebooks/phase2_pipeline_treino.ipynb`.
+**Nenhuma config supera a persistência ingênua** `ŷ(w)=y(w-1)`:
+
+| Métrica (melhor da grid `W12_h128_l3_lr5e-04`) | GNN val_mse | Persistência val_mse | veredito |
+|---|---|---|---|
+| combinado (viral50+top200) | ~0.00506 | ~0.0009 | ✗ ~5× pior |
+
+Detalhe no `summary.md` (rodado numa config fraca, `W4_h64_l2_lr1e-03`, 16ª/24): GNN perde em
+val **e** test, forecasting **e** retroativo, nos dois regimes.
+
+**Causa-raiz (estrutural, não de hiperparâmetro):** o modelo **nunca recebe o alvo defasado
+`y(w-1)`**. A entrada da GRU é puramente o embedding estrutural `bank[wk][song_idxs]`
+([`diffusion_gnn.py` `predict`](../../../src/music_diffusion_gnn/models/diffusion_gnn.py)); o
+`Sample` carrega `window_weeks` mas **nenhum valor de popularidade**. As features de nó música
+são acústicas **estáticas**; só a máscara de arestas muda por semana. Logo o modelo não consegue
+fazer o que a persistência faz trivialmente (copiar a última semana) → erra o **nível** da série.
+
+> **Plano B do ROADMAP (HGT/Transformer) NÃO resolve isto** — trocar encoder/cabeça não dá
+> acesso ao histórico de popularidade que falta. É problema de **feature/entrada**, não de capacidade.
+> O Plano B fica reservado para depois de R1, se ainda houver gap vs. persistência.
+
+## Decisão R1 (gray areas resolvidas)
+
+| # | Decisão | Escolha | Justificativa |
+|---|---------|---------|---------------|
+| R1-D1 | Onde injetar `y(w-1..w-W)` | **Feature de nó dinâmica** (2 canais: viral50, top200) por semana, antes do HeteroSAGE | Faz a popularidade **difundir pela rede de influência** (hipótese central do trabalho); a estrutura passa a ser load-bearing |
+| R1-D2 | Garantir competir com persistência | **Parametrização residual:** `ŷ(w) = clamp(y(w-1) + Δ, 0, 0.5)`, Δ = saída GRU+MLP | Com Δ=0 o modelo **reproduz a persistência exatamente**; só precisa aprender a *correção*. Testa diretamente "estrutura melhora ALÉM do termo AR" |
+| R1-D3 | Init para começar na persistência | **Zero-init da última `Linear`** da cabeça (weight=bias=0) → Δ=0 no passo 0 | Inductive bias forte; treino começa empatando a persistência e melhora a partir daí |
+| R1-D4 | Fonte de `y(w-1)` do resíduo | Lido do **`pop_bank[w-1, song, chart]`** (mesmo banco da feature) | Banco vem do `weekly_df` **completo** → casa exatamente com a persistência (incl. piso 0.0 em semanas-buraco); **não** muda `build_samples` |
+
+## Mudança de arquitetura
+
+```
+pop_bank[w] ∈ (N_music, 2)   # y_viral50(w), y_top200(w); 0 onde fora do chart
+node_feat(w) = concat( music.x estático , pop_bank[w] )   # (N_music, d+2)
+   → HeteroSAGE (difusão de popularidade pela rede de influência)
+   → Z_music(w)
+GRU( Z_music[w-W .. w-1] ) → MLP(zero-init) → Δ ∈ ℝ
+y_prev = pop_bank[w-1, song, chart]                       # = valor da persistência
+ŷ(w)   = clamp( y_prev + Δ , 0 , 0.5 )
+```
+
+**Sem leakage:** a feature de popularidade na semana `w'` da janela usa `pop_bank[w']` com
+`w' ≤ w-1 < w`; `y_prev` usa `w-1 < w`. Ambos são passado. Coerente com `mask_until(g, w')`.
+
+## Componentes alterados (diff R1)
+
+| Arquivo | Mudança |
+|---------|---------|
+| `training/dataset.py` | **+** `build_pop_bank(weekly_df, node_id_map_path, n_music, n_weeks=261) -> Tensor (n_weeks, n_music, 2)`. `Sample`/`build_samples` **inalterados**. |
+| `models/temporal_head.py` | `forward` retorna **Δ cru** (remove `0.5*sigmoid`); **zero-init** da última `Linear`. |
+| `models/diffusion_gnn.py` | `__init__(..., pop_bank=None)` registra buffer; `encode_weeks` concatena `pop_bank[w]` às features de música; `predict` calcula `Δ` e retorna `clamp(y_prev + Δ, 0, 0.5)`. `pop_bank=None` → comportamento de fallback (resíduo base 0) p/ testes. |
+| `training/trainer.py` | `pop_bank` opcional em `train_one`, `run_grid`, `evaluate` → repassado ao construtor. |
+| `tests/test_phase2_*.py` | range continua via `clamp` (C3); **+** teste: com `pop_bank`, modelo no init ≈ persistência (Δ≈0). |
+| `notebooks/phase2_pipeline_treino.ipynb` | constrói `pop_bank` 1×; passa a `train_one`/`run_grid`/`evaluate`/`MusicDiffusionGNN`. |
+
+**Critério de sucesso R1:** reaproveita C6/C7 (GNN < persistência no val MSE, ambos os regimes).
+Smoke obrigatório antes do grid: subset pequeno, poucas épocas → GNN deve **empatar ou superar**
+persistência (prova que o resíduo funciona). Se empatar mas não superar no grid completo →
+estrutura não agrega além do AR; aí sim avaliar Plano B / re-enquadrar (registrar em STATE).

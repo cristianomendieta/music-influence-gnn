@@ -49,7 +49,8 @@ clustering, comunidades por gênero) + objeto `HeteroData` serializado.
 ## Phase 2 — Modelagem com Temporal GNN heterogêneo (semanas 3–6)
 
 **Slug:** `phase-2-temporal-gnn`
-**Status:** implementing (2026-05-31) — grid rodando (24 configs, ~10h)
+**Status:** Revisão R1 (2026-06-23) — v1 reprovou C6/C7 (GNN < persistência); R1 (popularidade
+defasada + resíduo) implementada e smoke OK; falta re-rodar o grid completo.
 **Depende de:** Phase 1.
 
 **Arquitetura base:**

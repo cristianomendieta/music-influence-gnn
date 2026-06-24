@@ -43,9 +43,19 @@ def _subsample_cotraj(snap: HeteroData, max_edges: int) -> HeteroData:
 class MusicDiffusionGNN(nn.Module):
     """Heterogeneous temporal GNN for music popularity prediction.
 
-    Architecture:
-        encode_weeks: snapshot per week via mask_until → HeteroSAGE → Z_music
-        predict: gather window sequences for each sample → GRU+MLP → ŷ ∈ [0,0.5]
+    Architecture (R1, 2026-06-23 — lagged-popularity injection):
+        encode_weeks: per week, concat the popularity bank ``pop_bank[w]`` (2 chart
+            channels) onto the static music node features, then mask_until →
+            HeteroSAGE → Z_music. Popularity thus *diffuses through the influence
+            graph* (the central hypothesis), instead of structure-only embeddings.
+        predict: gather the window sequence → GRU+MLP → residual Δ; the final
+            prediction is ``ŷ = clamp(y_prev + Δ, 0, 0.5)`` where
+            ``y_prev = pop_bank[w-1, song, chart]`` is exactly the naive-persistence
+            value. The model only has to learn the structural *correction* to
+            persistence (and, with zero-init head, starts by matching it).
+
+    When ``pop_bank`` is ``None`` the model falls back to structure-only inputs
+    with a zero persistence base (used by lightweight unit tests).
 
     The embedding bank is computed *once per distinct week per forward call*,
     cached intra-forward (not between epochs — weights change), and is fully
@@ -60,6 +70,7 @@ class MusicDiffusionGNN(nn.Module):
         layers: int = 3,
         dropout: float = 0.2,
         genre_dim: int = 32,
+        pop_bank: Tensor | None = None,
     ) -> None:
         super().__init__()
         self.hidden = hidden
@@ -70,6 +81,12 @@ class MusicDiffusionGNN(nn.Module):
         nn.init.normal_(self.genre_emb.weight, mean=0.0, std=0.1)
         self.encoder = HeteroSpatialEncoder(metadata, hidden=hidden, layers=layers, dropout=dropout)
         self.head = TemporalHead(hidden=hidden, dropout=dropout)
+        # Per-week popularity (n_weeks, N_music, 2); registered as a buffer so it
+        # follows .to(device) but is not a trainable parameter. None → fallback.
+        if pop_bank is not None:
+            self.register_buffer("pop_bank", pop_bank.float())
+        else:
+            self.pop_bank = None
 
     # ------------------------------------------------------------------
     # Public API
@@ -102,6 +119,13 @@ class MusicDiffusionGNN(nn.Module):
             # learnable embedding so genre identity is trained end-to-end.
             x_dict = dict(snap.x_dict)
             x_dict["genre"] = self.genre_emb.weight
+            # R1: inject the week-w popularity (2 chart channels) as dynamic music
+            # node features so it diffuses through the influence graph. w ≤ target-1,
+            # so this is strictly past information (no leakage).
+            if self.pop_bank is not None:
+                x_dict["music"] = torch.cat(
+                    [x_dict["music"], self.pop_bank[w]], dim=1
+                )
             bank[w] = self.encoder(x_dict, snap.edge_index_dict)
         return bank
 
@@ -120,7 +144,7 @@ class MusicDiffusionGNN(nn.Module):
             samples: list of Sample objects (same batch)
 
         Returns:
-            (B,) predictions in [0, 0.5]
+            (B,) predictions in [0, 0.5] — ``clamp(y_prev + Δ, 0, 0.5)``
         """
         B = len(samples)
         W = len(samples[0].window_weeks)
@@ -150,7 +174,22 @@ class MusicDiffusionGNN(nn.Module):
         seq      = torch.stack(seq_parts, dim=1)          # (B, W, hidden)
         pad_mask = torch.stack(pad_cols, dim=1)            # (B, W) bool
 
-        return self.head(seq, pad_mask)
+        delta = self.head(seq, pad_mask)                   # (B,) raw residual Δ
+
+        # R1: anchor to naive persistence. y_prev = pop_bank[w-1, song, chart],
+        # which equals persistence_predict (same 0.0 floor for gap weeks).
+        if self.pop_bank is not None:
+            prev_weeks = torch.tensor(
+                [s.target_week - 1 for s in samples], dtype=torch.long, device=dev
+            ).clamp_(min=0)
+            chart_codes = torch.tensor(
+                [s.chart for s in samples], dtype=torch.long, device=dev
+            )
+            y_prev = self.pop_bank[prev_weeks, song_idxs, chart_codes]  # (B,)
+        else:
+            y_prev = torch.zeros(B, device=dev)
+
+        return (y_prev + delta).clamp(0.0, 0.5)
 
     def count_params(self) -> int:
         """Return total number of trainable parameters.

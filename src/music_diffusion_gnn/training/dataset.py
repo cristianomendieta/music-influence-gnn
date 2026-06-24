@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
+import torch
 
 from music_diffusion_gnn.graph.temporal import week_index
 
@@ -202,3 +203,65 @@ def build_samples(
         ))
 
     return samples
+
+
+# ---------------------------------------------------------------------------
+# R1.T1: build_pop_bank — dense per-week popularity for node-feature injection
+# ---------------------------------------------------------------------------
+
+def build_pop_bank(
+    weekly_df: pd.DataFrame,
+    node_id_map_path: Path | str,
+    n_music: int,
+    n_weeks: int = 261,
+) -> torch.Tensor:
+    """Build a dense per-week popularity tensor for node-feature injection (R1).
+
+    Returns a tensor ``pop_bank`` of shape ``(n_weeks, n_music, 2)`` where
+    ``pop_bank[w, song_idx, chart_code] = y_week(song, chart, w)`` and ``0.0``
+    where the (song, chart) is absent from the chart in week ``w``.
+
+    Channel order matches ``_CHART_CODE``: column 0 = viral50, column 1 = top200.
+    Row order matches the PyG music node index from ``node_id_map.json`` so it
+    aligns with the encoder's ``Z_music`` and with ``bank[w][song_idxs]``.
+
+    Built from the *full* ``weekly_df`` (all splits), so ``pop_bank[w-1, …]``
+    equals the naive persistence value (with the same 0.0 floor for gap weeks)
+    used by :func:`persistence_predict` — the residual head can therefore be
+    anchored to persistence exactly.
+
+    Args:
+        weekly_df: output of :func:`aggregate_weekly` (song_id, chart, week, y_week).
+        node_id_map_path: path to ``node_id_map.json`` (song_id → PyG index).
+        n_music: number of music nodes in the graph (``g["music"].num_nodes``).
+        n_weeks: number of week slots; default 261 covers weeks ``[0, 260]``.
+
+    Returns:
+        ``torch.float32`` tensor of shape ``(n_weeks, n_music, 2)``.
+    """
+    with open(node_id_map_path) as f:
+        nmap = json.load(f)
+    song_to_idx: dict[str, int] = nmap["music"]["spotify_id_to_idx"]
+
+    pop = torch.zeros((n_weeks, n_music, 2), dtype=torch.float32)
+
+    # Vectorised scatter via numpy index arrays
+    df = weekly_df[weekly_df["week"] < n_weeks].copy()
+    song_idx = df["song_id"].map(song_to_idx)
+    valid = song_idx.notna()
+    if not valid.all():
+        df = df[valid.values]
+        song_idx = song_idx[valid.values]
+
+    w_arr   = df["week"].to_numpy(dtype=np.int64).copy()
+    s_arr   = song_idx.to_numpy(dtype=np.int64).copy()
+    c_arr   = df["chart"].map(_CHART_CODE).to_numpy(dtype=np.int64).copy()
+    y_arr   = df["y_week"].to_numpy(dtype=np.float32).copy()
+
+    pop[
+        torch.from_numpy(w_arr),
+        torch.from_numpy(s_arr),
+        torch.from_numpy(c_arr),
+    ] = torch.from_numpy(y_arr)
+
+    return pop

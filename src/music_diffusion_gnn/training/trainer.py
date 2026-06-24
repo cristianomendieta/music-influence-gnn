@@ -138,6 +138,7 @@ def train_one(
     splits: dict[str, list[Sample]],
     g,  # HeteroData
     device: str = "cpu",
+    pop_bank=None,
 ) -> TrainResult:
     """Train a single config with early stopping on val MSE.
 
@@ -146,6 +147,9 @@ def train_one(
         splits: dict with 'train', 'val' lists of Sample
         g: the full hetero_full graph (HeteroData)
         device: torch device for model + graph ("cpu" or "cuda")
+        pop_bank: optional (n_weeks, N_music, 2) popularity tensor (R1). When
+            given, popularity is injected as a node feature and the head is
+            anchored to persistence; when None the model is structure-only.
 
     Returns:
         TrainResult with best state_dict, loss curves, val MSE, params, time
@@ -160,6 +164,7 @@ def train_one(
         hidden=config.hidden,
         layers=config.layers,
         dropout=config.dropout,
+        pop_bank=pop_bank,
     ).to(device)
     optimizer = Adam(
         model.parameters(),
@@ -306,11 +311,14 @@ def run_grid(
     splits: dict[str, list[Sample]],
     g,
     device: str = "cpu",
+    pop_bank=None,
 ) -> tuple[pd.DataFrame, Config, dict]:
     """Run hyperparameter grid; return (results_df, best_config, best_state_dict).
 
     The DataFrame has one row per config with columns:
     config_str, W, hidden, layers, lr, train_mse, val_mse, n_params, elapsed_sec.
+
+    ``pop_bank`` (R1) is forwarded to each :func:`train_one` call.
     """
     rows = []
     best_val_mse = float("inf")
@@ -319,7 +327,7 @@ def run_grid(
 
     for i, cfg in enumerate(grid):
         print(f"  [{i+1}/{len(grid)}] {cfg} ...", flush=True)
-        result = train_one(cfg, splits, g, device=device)
+        result = train_one(cfg, splits, g, device=device, pop_bank=pop_bank)
         print(f"    val_mse={result.val_mse:.6f}  params={result.n_params}  t={result.elapsed_sec:.1f}s")
 
         rows.append({
