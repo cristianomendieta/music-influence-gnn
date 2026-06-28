@@ -58,3 +58,51 @@ def persistence_predict_bulk(
         else:
             result[chart_name] = persistence_predict(y_week_df, sub)
     return result
+
+
+def persistence_multistep(
+    weekly_df: pd.DataFrame,
+    origins: pd.DataFrame,
+    ks: tuple[int, ...] = (1, 2, 4),
+) -> pd.DataFrame:
+    """Multi-step persistence baseline: ŷ(origin_week + k) = y(origin_week).
+
+    For each ``(song_id, chart, week)`` row in ``origins``, freezes the
+    observed ``y_week`` at ``origin_week`` and repeats it as the forecast
+    for every horizon ``k`` in ``ks``. Only ever reads ``y_week`` at
+    ``week == origin_week``, so it cannot leak information from beyond the
+    origin. When ``origin_week`` has no observation in ``weekly_df``, uses
+    the minimum floor value ``0.0``.
+
+    Args:
+        weekly_df: the full weekly DataFrame (all splits combined) with
+            columns ``[song_id, chart, week, y_week]``.
+        origins: DataFrame with columns ``[song_id, chart, week]``, one row
+            per ``(song, chart)`` evaluation origin.
+        ks: forecast horizons in weeks.
+
+    Returns:
+        DataFrame with columns ``[song_id, chart, origin_week, k, y_pred]``,
+        one row per ``(origin row, k)`` combination.
+    """
+    indexed = weekly_df.set_index(["song_id", "chart", "week"])["y_week"]
+
+    rows = []
+    for _, row in origins.iterrows():
+        key = (row["song_id"], row["chart"], row["week"])
+        if key in indexed.index:
+            y_pred = float(indexed[key])
+        else:
+            y_pred = 0.0
+        for k in ks:
+            rows.append(
+                {
+                    "song_id": row["song_id"],
+                    "chart": row["chart"],
+                    "origin_week": row["week"],
+                    "k": k,
+                    "y_pred": y_pred,
+                }
+            )
+
+    return pd.DataFrame(rows, columns=["song_id", "chart", "origin_week", "k", "y_pred"])
