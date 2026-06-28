@@ -141,6 +141,39 @@ def test_short_span_seed_clamped(graph, weekly_df, fresh_model):
     assert list(out["week"]) == [lsw]
 
 
+def test_gnn_rollout_recursive_smoke_shapes_and_range(graph, weekly_df, fresh_model):
+    from music_diffusion_gnn.evaluation.rollout import gnn_rollout_recursive
+    from music_diffusion_gnn.training.dataset import TEST_START_WEEK
+
+    grp = weekly_df.groupby(["song_id", "chart"])["week"]
+    fsw, lsw = grp.min(), grp.max()
+    candidates = (lsw[lsw - fsw >= 8]).index
+    candidates = [key for key in candidates if lsw[key] - 4 >= TEST_START_WEEK]
+    assert candidates, "no (song,chart) with enough span to build a test-span origin"
+    song_id, chart = candidates[0]
+    w = min(int(lsw[(song_id, chart)]) - 4, max(int(fsw[(song_id, chart)]) + 4, TEST_START_WEEK))
+
+    origins = pd.DataFrame({"song_id": [song_id], "chart": [chart], "week": [w]})
+    out = gnn_rollout_recursive(fresh_model, graph, weekly_df, origins, W=4, ks=(1, 2, 4))
+
+    assert list(out.columns) == ["song_id", "chart", "origin_week", "k", "y_true", "y_pred"]
+    assert set(out["k"]) == {1, 2, 4}
+    assert (out["origin_week"] == w).all()
+    assert (out["y_pred"] >= 0).all() and (out["y_pred"] <= 0.5).all()
+
+
+def test_gnn_rollout_recursive_filters_short_horizon_origins(graph, weekly_df, fresh_model):
+    """An origin too close to the end of the timeline (no room for k=4) is dropped."""
+    from music_diffusion_gnn.evaluation.rollout import gnn_rollout_recursive
+
+    n_weeks = fresh_model.pop_bank.shape[0]
+    song_id, chart = weekly_df.iloc[0][["song_id", "chart"]]
+    origins = pd.DataFrame({"song_id": [song_id], "chart": [chart], "week": [n_weeks - 2]})
+
+    out = gnn_rollout_recursive(fresh_model, graph, weekly_df, origins, W=4, ks=(1, 2, 4))
+    assert out.empty
+
+
 def test_saturation_rate():
     from music_diffusion_gnn.evaluation.rollout import _saturation_rate
 

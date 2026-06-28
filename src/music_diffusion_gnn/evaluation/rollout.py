@@ -155,6 +155,123 @@ def gnn_rollout_free(
     return pd.DataFrame(rows, columns=["song_id", "chart", "week", "y_true", "y_pred"])
 
 
+def gnn_rollout_recursive(
+    model,
+    g,
+    weekly_df: pd.DataFrame,
+    origins: pd.DataFrame,
+    *,
+    W: int,
+    ks: tuple[int, ...] = (1, 2, 4),
+    device: str = "cpu",
+) -> pd.DataFrame:
+    """Recursive GNN rollout (Mode 2): genuine k-step-ahead forecasting.
+
+    For each origin ``(song_id, chart, week=w)``, the look-back window is
+    anchored at the origin (``[w-W+1, ..., w]``) and its embeddings are
+    encoded **once**, reused for every horizon — no future week is ever
+    passed to ``encode_weeks`` (no structural information past the origin is
+    available, by construction). The only thing that changes per horizon is
+    the persistence anchor ``y_prev``: for ``k=1`` it is the real
+    ``pop_bank[w]``; for ``k>=2`` it is the model's own prediction for
+    ``w+k-1``, written into a working copy of ``pop_bank`` private to this
+    origin (cloned fresh per origin so overlapping-song origins at different
+    weeks never contaminate each other's "real" history).
+
+    Args:
+        model: a ``MusicDiffusionGNN`` with a non-None ``pop_bank`` buffer.
+        g: the full ``hetero_full`` graph.
+        weekly_df: output of ``aggregate_weekly`` (for ``y_true`` lookups and
+            each (song,chart)'s ``first_seen`` week, for window padding).
+        origins: DataFrame with columns ``[song_id, chart, week]``, one row
+            per evaluation origin. Restricted internally to the test span
+            (``week >= TEST_START_WEEK``) and to origins with room for the
+            full horizon (``week + max(ks) <= 260``) — both filters applied
+            defensively even if the caller already applied them.
+        W: look-back window length (must match the model's trained config).
+        ks: forecast horizons in weeks.
+        device: torch device for model + graph.
+
+    Returns:
+        DataFrame with columns ``[song_id, chart, origin_week, k, y_true,
+        y_pred]``, one row per ``(origin, k)``.
+    """
+    from music_diffusion_gnn.training.dataset import TEST_START_WEEK
+
+    model = model.to(device)
+    g = g.to(device)
+    model.eval()
+    assert model.pop_bank is not None, "gnn_rollout_recursive requires a model with a pop_bank buffer"
+
+    song_ids = g["music"].song_id
+    song_to_idx = {sid: i for i, sid in enumerate(song_ids)}
+    first_seen = weekly_df.groupby(["song_id", "chart"])["week"].min().to_dict()
+    weekly_indexed = weekly_df.set_index(["song_id", "chart", "week"])["y_week"]
+
+    max_k = max(ks)
+    n_weeks = model.pop_bank.shape[0]
+    valid = (origins["week"] >= TEST_START_WEEK) & (origins["week"] + max_k <= n_weeks - 1)
+    origins = origins.loc[valid, ["song_id", "chart", "week"]]
+
+    orig_bank = model.pop_bank
+    zcache: dict[int, torch.Tensor] = {}
+    rows: list[dict] = []
+
+    def _ensure_encoded(weeks: list[int]) -> None:
+        missing = [j for j in weeks if j >= 0 and j not in zcache]
+        if missing:
+            model.pop_bank = orig_bank  # encode_weeks must only ever see real, historical data
+            with torch.no_grad():
+                zcache.update(model.encode_weeks(g, missing))
+
+    try:
+        for _, orow in origins.iterrows():
+            sid, chart, w = orow["song_id"], orow["chart"], int(orow["week"])
+            song_idx = song_to_idx[sid]
+            chart_code = _CHART_CODE[chart]
+            fsw = first_seen[(sid, chart)]
+
+            window = [w - k for k in range(W - 1, -1, -1)]  # [w-W+1, ..., w], all <= w
+            _ensure_encoded(window)
+            bank_w = {j: zcache[j] for j in window if j in zcache}
+            window_weeks = [wk if (wk >= fsw and wk >= 0) else -1 for wk in window]
+            pad_mask = [wk == -1 for wk in window_weeks]
+
+            work_bank = orig_bank.clone()  # isolated per origin: no cross-origin contamination
+            model.pop_bank = work_bank
+            for k in range(1, max_k + 1):
+                target_week = w + k
+                sample = Sample(
+                    song_idx=song_idx,
+                    chart=chart_code,
+                    target_week=target_week,
+                    window_weeks=window_weeks,
+                    pad_mask=pad_mask,
+                    y=0.0,
+                )
+                with torch.no_grad():
+                    pred = float(model.predict(bank_w, [sample]).item())
+                work_bank[target_week, song_idx, chart_code] = pred  # never a real value
+                if k in ks:
+                    key2 = (sid, chart, target_week)
+                    y_true = float(weekly_indexed[key2]) if key2 in weekly_indexed.index else float("nan")
+                    rows.append(
+                        {
+                            "song_id": sid,
+                            "chart": chart,
+                            "origin_week": w,
+                            "k": k,
+                            "y_true": y_true,
+                            "y_pred": pred,
+                        }
+                    )
+            model.pop_bank = orig_bank
+    finally:
+        model.pop_bank = orig_bank
+
+    return pd.DataFrame(rows, columns=["song_id", "chart", "origin_week", "k", "y_true", "y_pred"])
+
+
 def _saturation_rate(preds: Iterable[float], *, eps: float = 1e-9) -> float:
     """Fraction of predictions clamped at the floor (0) or ceiling (0.5).
 
