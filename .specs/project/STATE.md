@@ -138,6 +138,66 @@
   dois regimes (viral50 0.000684 vs 0.000722; top200 0.000537 vs 0.000540). 8/8 testes phase2 verdes.
   Pendente: re-rodar o grid completo (R1.T8) e conferir C6/C7 no dataset cheio.
 
+- **2026-06-28** — **R1.T8 concluída — C6/C7 APROVADOS no dataset completo.** Grid v2 (24 configs,
+  Colab T4) em `results/phase2_experimentos_v2/`. **Todas as 24 configs batem a persistência** e
+  ficam fortemente agrupadas (val_mse combinado 0.000749–0.000764 vs ~0.005–0.006 da v1 → ~6,7×
+  melhor; persistência combinada ~0.0009). Melhor config = **W12_h128_l3_lr5e-04** (val_mse 0.000749),
+  mesma da v1. Run detalhado (`summary.md`, config W4_h64_l2_lr1e-03):
+  · VAL forecasting: viral50 GNN 0.000834 < persist 0.000964 ✓; top200 0.000634 < 0.000861 ✓
+  · TEST forecasting (semana≥208): viral50 0.000622 < 0.000716 ✓; top200 0.000494 < 0.000618 ✓
+  **Phase 2 concluída.** Nota: como todas as configs beat persist e diferem pouco, a escolha de HP
+  é robusta; o resíduo ancora e a estrutura agrega ~18% sobre a persistência. Detalhe a polir p/ o
+  paper: rodar a avaliação detalhada na MELHOR config (W12_h128_l3), não na W4 do `summary.md`.
+
+- **2026-06-28** — **Phase 3 especificada** (`.specs/features/phase-3-evaluation/spec.md` + `context.md`).
+  4 gray areas resolvidas: (D1) escopo P1 = **quantitativo + qualitativo** (Modo 1 + Modo 2 vs SIR
+  + Figs 8/9; interpretativo = P2); (D2) granularidade = **semanal** (SIR regenerado e agregado a
+  ISO-week; diário do Phase 0 vira âncora de reprodução; ressalva: semanal favorece SIR em hits
+  longos → recorte obrigatório); (D3) horizontes Modo 2 = **k∈{1,2,4} semanas via rollout recursivo**
+  (pop_bank usa valores preditos além da origem; critério ajustado p/ **≥2 de 3**); (D4) **wave-based
+  dropado**, só vs SIR, ausência declarada como limitação.
+  **Achados de disco decisivos:** `results/*` é **gitignored** → `results/phase0/sir_params.parquet`
+  e `data/processed/subset_ids.json` **NÃO estão nesta máquina**; ambos regeneráveis (R0:
+  `scripts/run_phase0.py` + `build_subset`). O `predictions.parquet` em disco é da config fraca **W4**
+  ("run único"), não da melhor **W12_h128_l3** → Phase 3 regenera predições na melhor config.
+  **OQ1 crítica (fairness Modo 1):** a cabeça residual `ŷ=clamp(y_prev+Δ)` sob teacher forcing vê
+  o `y(w-1)` real → reconstrução vira quase-persistência e venceria o SIR trivialmente. Resolução
+  recomendada: Modo 1 = **rollout livre** a partir de janela-seed (análogo ao SIR fit-then-simulate);
+  teacher-forced de 1 passo = Modo 2 k=1. 6 open questions p/ design (OQ1–OQ6).
+
+- **2026-06-28** — **Phase 3 design aprovado** (`.specs/features/phase-3-evaluation/design.md`).
+  6 OQs resolvidas com **sondagens reais** (não suposições): (OQ1 fairness) Modo 1 = **rollout
+  livre global sincronizado** — muta `pop_bank` de trabalho e re-encoda; `seed_weeks=W=12`;
+  encode **1×/semana** (≈ um passe, minutos em CPU), não O(músicas×span×W); (OQ2) checkpoint =
+  **`grid_best_model.pt`** (wrapper c/ meta; é a W12_h128_l3, state_dict inclui `pop_bank`) —
+  **`best_model.pt` é a W4 fraca, não usar**; carregar via `strict=False` dropando `pop_bank` e
+  usando o regenerado (guard `allclose`); (OQ3) SIR causal = refit `≤w` + simulate, restrito ao
+  **test span (208–260)**, `min_hist_weeks=4`, não-converg. excluída e contada; (OQ4) **Wilcoxon
+  pareado** primário + Mann-Whitney secundário + **bootstrap IC95% B=10k**; (OQ5) **hit longo =
+  >90d com `rank_score>0`** (viral50 77/4%, top200 798/40%) — span denso/floor capturaria 97%,
+  armadilha evitada; (OQ6) CRPS **deferido** (GNN determinístico). **Achados de disco decisivos:**
+  `timeseries.parquet` é **100% denso** com `y` pisado em 0.001 fora do chart (`rank_score==0`),
+  92,7% das linhas ≤0.001 → "dias no chart" = `rank_score>0`. Região RMSE M1 = span completo
+  (primário, alinha fit SIR Phase 0) + on-chart (robustez, blinda contra "só prever o floor").
+  **Componentes novos** (em `src/.../evaluation/`): `rollout.py`, `sir_eval.py`, `stats.py`,
+  `longhits.py`, `figures.py`, `interpretability.py` (P2) + `scripts/run_phase3.py`. Reusa
+  pesado: `MusicDiffusionGNN.encode_weeks/predict/pop_bank`, dataset (aggregate_weekly/
+  build_samples/build_pop_bank), `fit_sir`/`_sir_curve`/`parallel.fit_all`, `metrics.py`,
+  `report.make_boxplot`, `run_phase0.main` (R0). Próximo: `tasks phase-3-evaluation`.
+
+- **2026-06-28** — **Phase 3 tasks definidas** (`.specs/features/phase-3-evaluation/tasks.md`).
+  **12 tasks atômicas em 5 waves.** Wave 0 (paralelo): T1 `model_io.load_grid_best_model` (ckpt W12
+  + guard pop_bank), T2 `longhits`, T3 `stats` (Wilcoxon/bootstrap/dir.acc.), T4 `persistence_multistep`.
+  Wave 1: T5→T6 `sir_eval` (M1 curva semanal do fit; M2 refit causal `≤w`), T7→T8 `rollout` (M1 livre
+  global sincronizado; M2 recursivo + **teste de leakage** dedicado). Wave 2 (paralelo): T9 `figures`
+  (Fig.3 + Figs.8/9), T10 `interpretability` (P2). Wave 3: T11 `run_phase3.py` (orquestra R0→M1→M2→
+  figuras→summary+checklist C1–C12; smoke gate `--smoke`). Wave 4: T12 execução real + registro.
+  Cada task = 1 commit; PR único final. **Sem MCPs/Skills** (stack puro). Política de testes inferida
+  (não há TESTING.md): pytest `tests/test_phase3_*.py`; unit co-localizado nas funções puras/rollout,
+  smoke nas figuras, integration no orquestrador. **Refinamento nas tasks:** extrair o carregamento
+  do checkpoint para `evaluation/model_io.py` (o design o mostrava inline) — função testável isolada,
+  mantém `run_phase3` fino. Próximo: `implement phase-3-evaluation`.
+
 ## Blockers
 
 - *(nenhum)*
@@ -184,10 +244,12 @@
 - [x] Conferir C1–C9 quando grid terminar — grid v1 reprovou C6/C7 (GNN perde p/ persistência). 2026-06-23.
 - [~] Plano B (HGT/Transformer) **não acionado**: causa-raiz é feature (cego a `y(w-1)`), não capacidade. Substituído pela Revisão R1.
 - [x] **Revisão R1** especificada + implementada (R1.T1–R1.T6) + smoke (R1.T7) passou. 2026-06-23.
-- [ ] **R1.T8**: re-rodar grid completo no **Colab (T4)** com a nova arquitetura e conferir C6/C7.
-      Notebook agora grava em **`phase2_experimentos_v2`** (Drive `.../phase2_experimentos_v2`) →
-      preserva os resultados v1 e roda as 24 configs do zero (sem retomada das antigas).
-- [ ] Depois do grid v2: registrar números C6/C7 em STATE.md; comparar v1 vs v2.
+- [x] **R1.T8**: grid v2 rodado no Colab (T4); C6/C7 APROVADOS. Registrado 2026-06-28.
+- [ ] (Polish opcional) Rodar avaliação detalhada na melhor config (W12_h128_l3) p/ os números do paper.
+- [x] **Phase 3** — especificada (`.specs/features/phase-3-evaluation/`, spec + context). 2026-06-28.
+- [x] Executar `/tlc-spec-driven design phase-3-evaluation` (OQ1–OQ6 resolvidas; design.md aprovado). 2026-06-28.
+- [x] Executar `/tlc-spec-driven tasks phase-3-evaluation` (12 tasks atômicas em 5 waves). 2026-06-28.
+- [ ] Executar `/tlc-spec-driven implement phase-3-evaluation` (rodar T1 → T12).
 
 ## Deferred ideas
 

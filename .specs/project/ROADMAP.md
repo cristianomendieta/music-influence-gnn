@@ -49,8 +49,9 @@ clustering, comunidades por gênero) + objeto `HeteroData` serializado.
 ## Phase 2 — Modelagem com Temporal GNN heterogêneo (semanas 3–6)
 
 **Slug:** `phase-2-temporal-gnn`
-**Status:** Revisão R1 (2026-06-23) — v1 reprovou C6/C7 (GNN < persistência); R1 (popularidade
-defasada + resíduo) implementada e smoke OK; falta re-rodar o grid completo.
+**Status:** ✅ completed (R1, 2026-06-28) — v1 perdia p/ persistência; R1 (popularidade defasada
+como feature de nó + cabeça residual) **bate persistência nas 24 configs** (grid v2, Colab T4).
+Melhor: W12_h128_l3_lr5e-04, val_mse combinado 0.000749. Artefatos em `results/phase2_experimentos_v2/`.
 **Depende de:** Phase 1.
 
 **Arquitetura base:**
@@ -75,15 +76,20 @@ lugar de GRU; TGN puro.
 ## Phase 3 — Avaliação dupla (semanas 6–8)
 
 **Slug:** `phase-3-evaluation`
-**Status:** pending
-**Depende de:** Phase 2 (modelo treinado) e Phase 0 (baselines fitados).
+**Status:** designed (2026-06-28) — spec + context + design escritos. OQ1–OQ6 resolvidas:
+Modo 1 = **rollout livre global** (`seed_weeks=W`, encode 1×/semana); checkpoint = **`grid_best_model.pt`**
+(W12; `best_model.pt` é a W4 fraca); SIR causal refit `≤w` no test span; **Wilcoxon** pareado +
+bootstrap IC95%; **hit longo = >90d `rank_score>0`** (viral50 4%, top200 40%); CRPS deferido.
+⚠️ SIR e `subset_ids.json` **não estão em disco** (`results/` gitignored) → R0 regenera via `run_phase0.py`.
+**Depende de:** Phase 2 (melhor config W12_h128_l3, `results/phase2_experimentos_v2/`) e Phase 0 (SIR a regenerar).
 
-**Modo 1 — Fit retroativo:** comparação 1-pra-1 com Tabela do paper original.
-Métricas: RMSE médio ± IC 95%, boxplot (Fig. 3), Mann-Whitney pareado vs SIR e wave-based.
+**Modo 1 — Fit retroativo:** comparação 1-pra-1 com Tabela/Fig. 3 do paper, em granularidade
+**semanal**. Métricas: RMSE médio ± IC 95% (bootstrap), boxplot (Fig. 3), Wilcoxon pareado
+(+ Mann-Whitney p/ alinhar paper) vs SIR. GNN = **rollout livre** (justiça vs teacher forcing, OQ1).
 
-**Modo 2 — Predição genuína (extensão original):** rank_score em t+k usando dados ≤ t.
-Refazer SIR e wave-based no mesmo regime. Métricas: RMSE em k ∈ {1, 7, 14, 30 dias},
-acerto direcional, score-CRPS quando viável.
+**Modo 2 — Predição genuína (extensão original):** `y_week(w+k)` usando dados ≤ w, via rollout
+recursivo. Refazer SIR causal no mesmo regime. Métricas: RMSE em **k ∈ {1, 2, 4} semanas**,
+acerto direcional; score-CRPS deferido (P3).
 
 **Análise qualitativa:** replicar Figs. 8 e 9 do paper com casos "Shallow",
 "Batom de Cereja", "Água Nos Zói", "abcdefu".
