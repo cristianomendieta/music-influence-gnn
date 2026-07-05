@@ -111,22 +111,27 @@ class MusicDiffusionGNN(nn.Module):
             ``{week: Z_music}`` where each Z_music ∈ (N_music, hidden)
         """
         bank: dict[int, Tensor] = {}
+        # Model's own device (its parameters), authoritative regardless of what
+        # device `g` happens to carry — callers are not required to have moved
+        # the graph themselves (fragile across PyG versions/in-place semantics).
+        device = self.genre_emb.weight.device
         for w in set(weeks):
             snap = mask_until(g, w)
             if max_cotraj_edges is not None:
                 snap = _subsample_cotraj(snap, max_cotraj_edges)
+            x_dict = {k: v.to(device) for k, v in snap.x_dict.items()}
+            edge_index_dict = {k: v.to(device) for k, v in snap.edge_index_dict.items()}
             # Override the graph's (unused) static genre features with the
             # learnable embedding so genre identity is trained end-to-end.
-            x_dict = dict(snap.x_dict)
             x_dict["genre"] = self.genre_emb.weight
             # R1: inject the week-w popularity (2 chart channels) as dynamic music
             # node features so it diffuses through the influence graph. w ≤ target-1,
             # so this is strictly past information (no leakage).
             if self.pop_bank is not None:
                 x_dict["music"] = torch.cat(
-                    [x_dict["music"], self.pop_bank[w]], dim=1
+                    [x_dict["music"], self.pop_bank[w].to(device)], dim=1
                 )
-            bank[w] = self.encoder(x_dict, snap.edge_index_dict)
+            bank[w] = self.encoder(x_dict, edge_index_dict)
         return bank
 
     def predict(

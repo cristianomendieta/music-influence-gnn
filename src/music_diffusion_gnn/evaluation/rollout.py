@@ -114,9 +114,10 @@ def gnn_rollout_free(
                 continue
 
             window = [w - k for k in range(W, 0, -1)]  # [w-W, ..., w-1]
-            for j in window:
-                if j >= 0 and j not in zcache:
-                    zcache[j] = model.encode_weeks(g, [j])[j]
+            missing = [j for j in window if j >= 0 and j not in zcache]
+            if missing:
+                with torch.no_grad():
+                    zcache.update(model.encode_weeks(g, missing))
             bank_w = {j: zcache[j] for j in window if j in zcache}
 
             samples: list[Sample] = []

@@ -56,7 +56,9 @@ def load_grid_best_model(
                 f"pop_bank shape mismatch: checkpoint {ckpt_pop_bank.shape} vs "
                 f"regenerated {pop_bank_regen.shape} — incompatible graph/timeseries snapshot."
             )
-        if not torch.allclose(ckpt_pop_bank, pop_bank_regen.to(ckpt_pop_bank.dtype)):
+        if not torch.allclose(
+            ckpt_pop_bank, pop_bank_regen.to(device=ckpt_pop_bank.device, dtype=ckpt_pop_bank.dtype)
+        ):
             warnings.warn(
                 "Regenerated pop_bank differs from the checkpoint's frozen pop_bank "
                 "(same shape, different values)."
