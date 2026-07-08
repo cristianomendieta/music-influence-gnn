@@ -1,7 +1,7 @@
 \chapter{Resultados Parciais}
 \label{cap:resultados}
 
-Este capítulo apresenta os resultados já consolidados do estudo. O trabalho está organizado em etapas incrementais, das quais duas foram concluídas até o momento desta qualificação: a reprodução do baseline epidemiológico e a construção do grafo heterogêneo temporal. As etapas seguintes (treinamento da GNN temporal e avaliação comparativa) estão em andamento e serão detalhadas no cronograma de execução da dissertação. O objetivo aqui é duplo: demonstrar que o pipeline reproduz fielmente o baseline de referência e evidenciar que o grafo construído possui estrutura suficiente para justificar a abordagem neural.
+Este capítulo apresenta os resultados já consolidados do estudo. O trabalho está organizado em etapas incrementais: a reprodução do baseline epidemiológico, a construção do grafo heterogêneo temporal, o treinamento da GNN temporal e a avaliação comparativa entre a GNN e o baseline SIR nos dois regimes descritos na metodologia. O objetivo é triplo: demonstrar que o pipeline reproduz fielmente o baseline de referência, evidenciar que o grafo construído possui estrutura suficiente para justificar a abordagem neural, e comparar os dois modelos tanto na reconstrução retroativa das trajetórias (Modo~1) quanto na previsão de curto horizonte fora da amostra (Modo~2). Adianta-se que os modelos são complementares: o SIR, por ajustar dois parâmetros a cada curva completa, é mais preciso na reconstrução \emph{in-sample}, ao passo que a GNN, um preditor global e congelado, supera o SIR de forma consistente e estatisticamente significativa na tarefa de previsão --- que é o seu uso pretendido.
 
 %=====================================================
 
@@ -65,8 +65,61 @@ A construção foi acompanhada de um conjunto de validações automatizadas (nov
 
 %=====================================================
 
+\section{Avaliação dupla: GNN temporal \emph{versus} SIR}
+\label{sec:avaliacao-dupla}
+
+A terceira etapa treinou a GNN heterogênea temporal (arquitetura HeteroGraphSAGE seguida de uma unidade recorrente GRU, janela temporal de doze semanas, dimensão latente 128 e três camadas de convolução) e a avaliou contra o baseline SIR sobre exatamente o mesmo eixo semanal e o mesmo subconjunto de músicas, condição indispensável para uma comparação justa. O modelo selecionado atingiu erro quadrático médio de validação de $7{,}5 \times 10^{-4}$. A avaliação segue dois regimes distintos e complementares. As pequenas variações no número de músicas entre etapas (1.981 no ajuste SIR, 1.955 no Modo~1 e 1.933 no Modo~2) refletem exigências mínimas específicas de cada regime -- por exemplo, uma janela causal completa de $W$ semanas antes da origem de previsão --, de modo que uma música é excluída apenas da etapa em que a exigência correspondente não é satisfeita.
+
+\subsection{Modo 1 --- reconstrução retroativa}
+
+No Modo~1, cada modelo reconstrói a trajetória semanal inteira de uma música a partir de uma semente inicial. Trata-se de uma tarefa \emph{in-sample} para o SIR, cujos parâmetros $\beta$ e $\gamma$ são ajustados individualmente à curva completa de cada música; a GNN, ao contrário, é um modelo global e congelado que simula a trajetória às cegas. A Tabela~\ref{tab:phase3-mode1} mostra que, nesse cenário, o SIR obtém menor RMSE em ambos os regimes, tanto na métrica de espectro completo quanto na restrita às semanas em que a música figura efetivamente no chart (\emph{on-chart}).
+
+\begin{table}[htbp]
+\centering
+\caption{Modo 1 --- RMSE médio da reconstrução retroativa (1.955 músicas por regime).}
+\label{tab:phase3-mode1}
+\begin{tabular}{lrrrr}
+\hline
+\textbf{Regime} & \textbf{GNN} & \textbf{SIR} & \textbf{GNN (on-chart)} & \textbf{SIR (on-chart)} \\
+\hline
+Viral 50 & $0{,}0266$ & $0{,}0141$ & $0{,}1915$ & $0{,}1756$ \\
+Top 200  & $0{,}0632$ & $0{,}0343$ & $0{,}1637$ & $0{,}1262$ \\
+\hline
+\end{tabular}
+\end{table}
+
+Essa vantagem do SIR é esperada e não contradiz a hipótese do trabalho: comparar um modelo global congelado, que prevê a partir de uma semente de doze semanas, contra um ajuste de dois parâmetros livres feito sobre a curva inteira favorece estruturalmente o segundo. O ponto relevante é que a diferença se estreita fortemente quando se olham apenas as semanas \emph{on-chart}, onde a dinâmica de fato importa: no regime Viral 50 os erros ficam próximos ($0{,}1915$ contra $0{,}1756$). O critério pré-registrado de superioridade da GNN na reconstrução (denominado C4 no protocolo) não foi atingido e é, portanto, documentado honestamente como uma limitação do regime \emph{in-sample}, e não como falha do modelo. A mesma leitura se aplica ao subgrupo de \emph{hits} de longa permanência (mais de noventa dias em chart, 806 músicas), no qual o SIR mantém vantagem (RMSE médio $0{,}0605$ contra $0{,}0998$ da GNN): são justamente as trajetórias multi-onda que o ajuste curva-a-curva melhor captura.
+
+\subsection{Modo 2 --- previsão de curto horizonte}
+
+O Modo~2 mede a tarefa de fato pretendida para a GNN: previsão causal, a $k$ semanas à frente, usando somente informação disponível até a origem da previsão. Aqui o SIR é reajustado de forma causal: $\beta$ e $\gamma$ são estimados por mínimos quadrados não lineares apenas sobre os pontos observados até a semana de origem, e a curva prevista resulta da integração da EDO por $k$ semanas a partir do último estado estimado -- o que o coloca em pé de igualdade metodológica com a GNN. Incluiu-se ainda um baseline de persistência (repetir o último valor observado). A Tabela~\ref{tab:phase3-mode2} apresenta o RMSE por horizonte e regime.
+
+\begin{table}[htbp]
+\centering
+\caption{Modo 2 --- RMSE da previsão causal a $k$ semanas (1.933 músicas pareadas por célula).}
+\label{tab:phase3-mode2}
+\begin{tabular}{llrrr}
+\hline
+\textbf{Regime} & \textbf{$k$} & \textbf{GNN} & \textbf{SIR} & \textbf{Persist.} \\
+\hline
+Viral 50 & 1 & $\mathbf{0{,}0261}$ & $0{,}0368$ & $0{,}0267$ \\
+         & 2 & $\mathbf{0{,}0345}$ & $0{,}0604$ & $0{,}0375$ \\
+         & 4 & $\mathbf{0{,}0444}$ & $0{,}0798$ & $0{,}0538$ \\
+Top 200  & 1 & $0{,}0238$ & $0{,}0458$ & $\mathbf{0{,}0231}$ \\
+         & 2 & $0{,}0370$ & $0{,}0524$ & $\mathbf{0{,}0360}$ \\
+         & 4 & $\mathbf{0{,}0513}$ & $0{,}0636$ & $0{,}0520$ \\
+\hline
+\end{tabular}
+\end{table}
+
+A GNN supera o SIR em \emph{todos} os seis cenários (dois regimes $\times$ três horizontes). A vantagem é estatisticamente significativa: o teste de Wilcoxon pareado por música rejeita a hipótese nula em todas as células, com valores-$p$ entre $6{,}5 \times 10^{-4}$ e $5{,}4 \times 10^{-32}$, e a GNN apresenta menor erro em 64\% a 77\% das músicas, conforme o horizonte. A margem sobre o SIR também cresce com o horizonte no regime Viral 50 (de $29\%$ em $k=1$ para $44\%$ em $k=4$), indicando que a estrutura do grafo é especialmente útil quando a extrapolação epidemiológica se degrada. O baseline de persistência é forte nos horizontes curtos --- comportamento esperado, pois a popularidade varia pouco de uma semana para a seguinte --- e, no regime Top~200, supera marginalmente a GNN tanto em $k=1$ ($0{,}0231$ contra $0{,}0238$) quanto em $k=2$ ($0{,}0360$ contra $0{,}0370$); as diferenças são pequenas, mas documenta-se honestamente que o critério mínimo pré-registrado de superioridade sobre a persistência não é satisfeito em todas as células, no mesmo espírito da leitura dada ao critério C4 no Modo~1. No regime Viral~50, a GNN supera a persistência em todos os horizontes avaliados; no Top~200, apenas no horizonte mais longo ($k=4$: $0{,}0513$ contra $0{,}0520$). Frente ao SIR, por outro lado, a GNN é consistentemente superior nos seis cenários avaliados. Esse resultado --- a GNN como o melhor preditor frente ao baseline epidemiológico --- constitui a contribuição central do estudo e satisfaz o critério de previsão pré-registrado (C6) na comparação com o SIR; frente à persistência, o critério é atingido no Viral~50, mas apenas parcialmente no Top~200, onde a GNN só a supera em $k=4$.
+
+%=====================================================
+
 \section{Discussão parcial}
 
-Os resultados consolidados sustentam duas conclusões parciais. Primeiro, o baseline epidemiológico foi reproduzido dentro das margens da literatura, validando o pipeline de dados e avaliação que servirá de base para a comparação com modelos neurais. Segundo, a topologia do grafo heterogêneo (\textit{clustering} elevado, comunidades de gênero coerentes e distribuições de grau realistas) constitui evidência prévia de que existe sinal estrutural a ser explorado por uma GNN. Em outras palavras, caso o modelo neural não supere o baseline, isso não poderá ser atribuído à ausência de estrutura no grafo.
+Os resultados consolidados sustentam três conclusões parciais. Primeiro, o baseline epidemiológico foi reproduzido dentro das margens da literatura, validando o pipeline de dados e avaliação. Segundo, a topologia do grafo heterogêneo (\textit{clustering} elevado, comunidades de gênero coerentes e distribuições de grau realistas) sugere que existe sinal estrutural a ser explorado por uma GNN. Terceiro, e mais importante, a avaliação dupla mostra que GNN e SIR são complementares, cada um superior na tarefa para a qual é estruturalmente adequado.
 
-Resta como trabalho em andamento o treinamento da GNN heterogênea temporal e a avaliação comparativa nos dois regimes descritos na metodologia. Esses resultados, ainda não disponíveis, são o objeto central da próxima etapa do estudo e compõem o cronograma de execução da dissertação.
+A leitura conjunta dos dois modos é o ponto central. Na reconstrução retroativa (Modo~1), o SIR leva vantagem, mas por um motivo metodológico transparente: ele ajusta dois parâmetros livres à curva completa de cada música, enquanto a GNN simula às cegas a partir de uma semente curta. Já na previsão causal de curto horizonte (Modo~2), que é o uso pretendido de um preditor e a pergunta de pesquisa efetivamente relevante, a GNN supera o SIR em todos os horizontes e regimes, com significância estatística forte. Em outras palavras, um preditor neural treinado sobre esse grafo supera o modelo epidemiológico puramente temporal, com vantagem que cresce à medida que o horizonte de previsão aumenta. Atribuir esse ganho especificamente à estrutura relacional (coautoria, gênero e cotrajetória) --- e não apenas à maior flexibilidade de um modelo neural frente a um ajuste paramétrico de dois graus de liberdade --- é, neste estágio, hipótese e não achado estabelecido.
+
+Resta como trabalho em andamento testar diretamente essa hipótese, por meio da análise de interpretabilidade da GNN --- ablação por tipo de aresta, importância de grupos de atributos e extração de análogos de $\beta$, $\gamma$ e $R_0$ a partir das trajetórias previstas --- e de um baseline neural sem grafo (por exemplo, uma GRU sobre a série de cada música isolada), que isola o ganho atribuível à flexibilidade do modelo daquele atribuível à estrutura relacional. Os resultados completos serão incorporados na versão final da dissertação.

@@ -33,11 +33,11 @@ O pré-processamento das séries segue a lógica do estudo SIR de referência pa
 \textit{rank\_score} = \textit{max\_rank} - rank + 1,
 \end{equation}
 
-de modo que a posição \#1 receba o valor máximo. Sobre essa série aplica-se uma média móvel de sete dias, seguida de normalização \emph{min-max} para o intervalo $[0,\,0{,}5]$; dias em que a música não aparece no chart recebem um valor mínimo de $0{,}001$, evitando problemas numéricos no ajuste do SIR. Cada música gera, portanto, duas séries de aproximadamente 1.900 dias: uma de viralidade e uma de sucesso.
+de modo que a posição \#1 receba o valor máximo. Sobre essa série aplica-se uma média móvel de sete dias, seguida de normalização \emph{min-max} para o intervalo $[0,\,0{,}5]$; dias em que a música não aparece no chart recebem um valor mínimo de $0{,}001$, evitando problemas numéricos no ajuste do SIR. Os limites dessa normalização são teóricos e fixos ($\textit{max\_rank}$ conhecido a priori e o piso $0{,}001$), não estimados empiricamente sobre a série de cada música, de modo que o alvo não carrega informação do pico futuro da trajetória. Cada música gera, portanto, duas séries de aproximadamente 1.900 dias: uma de viralidade e uma de sucesso.
 
 Músicas sem atributos acústicos completos não são removidas do universo. Em vez disso, os valores ausentes são imputados com a mediana e acompanhados por um indicador binário de ausência acústica. Essa decisão preserva a cobertura do dataset e permite que o modelo aprenda se a ausência de atributos carrega algum sinal sistemático.
 
-As variáveis contínuas usadas como atributos são padronizadas por escore-$z$. Essa normalização é aplicada a atributos como popularidade, streams, dias em chart e estatísticas agregadas de artistas. O objetivo é evitar que diferenças de escala dominem a passagem de mensagens na GNN.
+As variáveis contínuas usadas como atributos são padronizadas por escore-$z$, com média e desvio-padrão estimados exclusivamente sobre o \emph{split} de treinamento (Seção~\ref{sec:vazamento}) e reaplicados a validação e teste. Essa normalização é aplicada a atributos como popularidade, streams, dias em chart e estatísticas agregadas de artistas. O objetivo é evitar que diferenças de escala dominem a passagem de mensagens na GNN, sem introduzir vazamento de informação futura nas estatísticas de normalização.
 
 %=====================================================
 
@@ -62,7 +62,7 @@ As músicas são descritas por vetores de 12 dimensões, compostos por nove atri
 
 O grafo contém quatro tipos principais de arestas. A relação \texttt{performs} conecta artistas a músicas e representa autoria ou participação. A relação \texttt{has\_genre} conecta artistas a gêneros. A relação \texttt{cotrajectory} conecta músicas que compartilham presença temporal nos charts e possuem trajetórias semelhantes. A relação \texttt{cooccurs} conecta gêneros que aparecem conjuntamente em agregações do dataset.
 
-Cada tipo de aresta possui atributos específicos. Em \texttt{performs}, são registrados papel do artista, posição na lista de artistas e primeira semana observada. Em \texttt{cotrajectory}, são registrados dias em conjunto, distância média de posição, tipo de chart e primeira semana observada. Em \texttt{cooccurs}, são registrados peso, popularidade média, streams médios e primeira semana observada. Essa estrutura permite que o modelo diferencie relações por semântica e por momento de observação.
+Cada tipo de aresta possui atributos específicos. Em \texttt{performs}, são registrados papel do artista, posição na lista de artistas e primeira semana observada. Em \texttt{cotrajectory}, são registrados dias em conjunto, distância média de posição, tipo de chart e primeira semana observada; esses atributos de similaridade são calculados usando apenas observações até a semana \texttt{first\_seen\_week} da aresta, de modo que a existência e os atributos da aresta não codificam informação de trajetórias futuras. Em \texttt{cooccurs}, são registrados peso, popularidade média, streams médios e primeira semana observada. Essa estrutura permite que o modelo diferencie relações por semântica e por momento de observação.
 
 %=====================================================
 
