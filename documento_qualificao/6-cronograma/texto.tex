@@ -1,0 +1,51 @@
+\chapter{Cronograma e Próximos Passos}
+\label{cap:cronograma}
+
+Este capítulo consolida o que resta para concluir a pesquisa de mestrado e apresenta o cronograma previsto para essas atividades. O trabalho descrito nos capítulos anteriores já entregou três resultados centrais (Capítulo~\ref{cap:resultados}): a reprodução fiel do baseline epidemiológico SIR, a construção e validação do grafo heterogêneo temporal, e a avaliação dupla que mostra a GNN heterogênea temporal superando o SIR de forma estatisticamente significativa na tarefa de previsão causal de curto horizonte. As etapas restantes têm dois propósitos: isolar quanto do ganho preditivo se deve especificamente à estrutura relacional do grafo, e verificar se esse ganho é robusto à escolha da arquitetura de codificação, antes da redação final e da defesa.
+
+%=====================================================
+
+\section{Próximos passos}
+
+As atividades a seguir dão continuidade direta às pendências já identificadas na discussão parcial (Seção~\ref{sec:avaliacao-dupla}) e detalham as investigações necessárias para fechar a dissertação.
+
+\begin{itemize}
+
+  \item \textbf{Baseline neural sem grafo.} Treinar um preditor puramente temporal, isto é, uma GRU aplicada à série de cada música isoladamente, sem acesso às relações do grafo. Esse baseline isola o ganho atribuível à flexibilidade de um modelo neural daquele atribuível à estrutura relacional (coautoria, gênero e cotrajetória), respondendo diretamente à ressalva levantada na Seção~\ref{sec:avaliacao-dupla}.
+
+  \item \textbf{Interpretabilidade e ablação.} Conduzir a análise de interpretabilidade da GNN prevista na metodologia: ablação por tipo de aresta (removendo \texttt{performs}, \texttt{has\_genre}, \texttt{cotrajectory} ou \texttt{cooccurs} e medindo o impacto no RMSE de previsão), avaliação da importância de grupos de atributos e extração de análogos de $\beta$, $\gamma$ e $R_0$ a partir das trajetórias previstas, aproximando a leitura neural da leitura epidemiológica.
+
+  \item \textbf{Experimentos com arquitetura alternativa de GNN.} O codificador atual, \emph{HeteroGraphSAGE}, agrega vizinhos por média (Seção~\ref{sec:modelo-proposto}), atribuindo peso uniforme a cada relação e a cada vizinho. Pretende-se substituí-lo por um codificador heterogêneo baseado em atenção, como o \emph{Heterogeneous Graph Transformer} \citep{hu2020hgt} ou uma variante com atenção por relação \citep{velickovic2018gat,wang2019han}, mantendo fixos a cabeça temporal, o protocolo de \emph{splits} e o mecanismo de prevenção de vazamento, de modo a garantir uma comparação justa. Esse experimento cumpre duas funções: (i) verificar se a vantagem preditiva observada é robusta à escolha de arquitetura, e não um artefato do \emph{HeteroGraphSAGE}; e (ii) explorar se pesos de atenção aprendidos (por exemplo, distinguindo o artista principal do participante ou ponderando vizinhos de cotrajetória) melhoram a previsão e fornecem interpretabilidade adicional, conectando-se ao item anterior.
+
+  \item \textbf{Análise comparativa e redação.} Consolidar os resultados dos três experimentos anteriores em uma comparação única (SIR, persistência, GNN sem grafo, \emph{HeteroGraphSAGE} e arquitetura alternativa), sob as mesmas métricas e o mesmo eixo semanal, e redigir os capítulos finais da dissertação, incluindo a discussão completa e a conclusão.
+
+  \item \textbf{Defesa e publicação.} Defender a dissertação e organizar as contribuições principais em um artigo para submissão a um evento ou periódico da área.
+
+\end{itemize}
+
+%=====================================================
+
+\section{Cronograma}
+
+A Tabela~\ref{tab:cronograma} apresenta a distribuição prevista dessas atividades ao longo dos meses, a partir da qualificação. O cronograma reserva os meses iniciais para os experimentos ainda em aberto (baseline sem grafo, ablação e arquitetura alternativa), concentra a redação após a consolidação dos resultados e prevê defesa e submissão nos meses finais.
+
+\begin{table}[htbp]
+\centering
+\caption{Cronograma das atividades restantes (jul.\ a dez.\ 2026).}
+\label{tab:cronograma}
+\footnotesize
+\begin{tabular}{lcccccc}
+\hline
+\textbf{Atividade} & \textbf{Jul} & \textbf{Ago} & \textbf{Set} & \textbf{Out} & \textbf{Nov} & \textbf{Dez} \\
+\hline
+Qualificação                    & $\times$ &          &          &          &          &          \\
+Baseline neural sem grafo       &          & $\times$ &          &          &          &          \\
+Interpretabilidade e ablação    &          & $\times$ & $\times$ &          &          &          \\
+Arquitetura alternativa de GNN  &          &          & $\times$ & $\times$ &          &          \\
+Análise comparativa             &          &          &          & $\times$ & $\times$ &          \\
+Redação da dissertação          &          &          &          &          & $\times$ & $\times$ \\
+Defesa                          &          &          &          &          &          & $\times$ \\
+Publicação                      &          &          &          &          &          & $\times$ \\
+\hline
+\end{tabular}
+\end{table}
