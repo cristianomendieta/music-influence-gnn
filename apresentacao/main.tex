@@ -1,0 +1,1394 @@
+%=====================================================
+% Apresentação de Qualificação de Mestrado — PPGInf/UFPR
+% Modelagem da difusão de tendências culturais com
+% redes neurais heterogêneas temporais em grafos
+%
+% Autor: Cristiano Mendieta   Orientador: André Luís Vignatti
+% Layout base: slides-beamer-ufpr
+% Duração alvo: 45 minutos
+%
+% Compilar:  pdflatex main.tex  (2x, por causa do sumário)
+%=====================================================
+
+\documentclass[aspectratio=169]{beamer}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazil]{babel}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\pgfplotsset{compat=newest}
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds,shapes.geometric,calc,decorations.pathreplacing}
+
+\usetheme{default}
+\usecolortheme{orchid}
+\usefonttheme[onlymath]{serif}
+
+\beamertemplatenavigationsymbolsempty
+\hypersetup{pdfpagemode=FullScreen}
+
+%=====================================================
+% Paleta e atalhos
+%=====================================================
+\definecolor{ufprA}{RGB}{0,84,143}     % azul institucional
+\definecolor{ufprB}{RGB}{200,64,48}    % vermelho de destaque
+\definecolor{ufprC}{RGB}{0,133,110}    % verde
+\definecolor{ufprD}{RGB}{120,90,160}   % roxo
+\definecolor{cinza}{RGB}{110,110,110}
+
+\setbeamercolor{structure}{fg=ufprA}
+\setbeamercolor{alerted text}{fg=ufprB}
+\setbeamertemplate{itemize item}{\color{ufprA}$\blacktriangleright$}
+\setbeamertemplate{itemize subitem}{\color{cinza}--}
+\setbeamerfont{frametitle}{series=\bfseries}
+\setbeamertemplate{caption}{\insertcaption}
+
+% rodapé com numeração
+% Altura fixa: reserva a faixa inferior do fundo institucional (logo UFPR à esquerda,
+% losangos à direita), evitando que o conteúdo dos slides colida com a arte de fundo.
+\setbeamertemplate{footline}{%
+  \begin{beamercolorbox}[wd=\paperwidth,ht=2.6ex,dp=4.2ex,center]{}
+    \scriptsize\color{cinza}\insertframenumber\,/\,\inserttotalframenumber
+  \end{beamercolorbox}}
+
+\newcommand{\dest}[1]{\textcolor{ufprB}{\textbf{#1}}}
+\newcommand{\azul}[1]{\textcolor{ufprA}{\textbf{#1}}}
+\newcommand{\verd}[1]{\textcolor{ufprC}{\textbf{#1}}}
+
+%=====================================================
+% Página de título (do modelo UFPR)
+%=====================================================
+\makeatletter
+\newcommand\titlegraphicii[1]{\def\inserttitlegraphicii{#1}}
+\titlegraphicii{}
+\setbeamertemplate{title page}
+{
+  \vbox{}
+   {\usebeamercolor[fg]{titlegraphic}\inserttitlegraphic\hfill\inserttitlegraphicii\par}
+  \begin{centering}
+    \begin{beamercolorbox}[sep=2pt,center]{institute}
+      \usebeamerfont{institute}\insertinstitute
+    \end{beamercolorbox}
+    \begin{beamercolorbox}[sep=12pt,center]{title}
+      \usebeamerfont{title}\inserttitle\par%
+      \ifx\insertsubtitle\@empty%
+      \else%
+        \vskip0.2em%
+        {\usebeamerfont{subtitle}\usebeamercolor[fg]{subtitle}\insertsubtitle\par}%
+      \fi%
+    \end{beamercolorbox}%
+    \vskip0.2em\par
+    \begin{beamercolorbox}[sep=2pt,center]{author}
+      \usebeamerfont{author}\insertauthor
+    \end{beamercolorbox}
+    \begin{beamercolorbox}[sep=4pt,center]{date}
+      \usebeamerfont{date}\insertdate
+    \end{beamercolorbox}%
+  \end{centering}
+}
+\makeatother
+
+\title{Modelagem da difusão de tendências culturais\\com redes neurais heterogêneas temporais em grafos}
+\author{\textbf{Cristiano Mendieta}\\[0.3em]\small Orientador: Prof.\ Dr.\ André Luís Vignatti}
+\institute{UNIVERSIDADE FEDERAL DO PARANÁ \\
+SETOR DE CIÊNCIAS EXATAS \\
+DEPARTAMENTO DE INFORMÁTICA \\
+PROGRAMA DE PÓS-GRADUAÇÃO EM INFORMÁTICA}
+\date{\small Exame de Qualificação de Mestrado \textbullet{} Curitiba, agosto de 2026}
+
+% Slide de transição a cada seção
+\AtBeginSection[]
+{
+  \begin{frame}{Roteiro}
+    \tableofcontents[currentsection,hideallsubsections]
+  \end{frame}
+}
+
+%=====================================================
+\begin{document}
+
+{%
+ \usebackgroundtemplate{\centering\includegraphics[width=\paperwidth]{CapaUFPR.png}}
+\begin{frame}[plain]
+  \titlepage
+\end{frame}
+}
+
+% fundo padrão para todo o restante
+\usebackgroundtemplate{\centering\includegraphics[width=\paperwidth]{FundoUFPR2.png}}
+
+%=====================================================
+\section{Introdução}
+%=====================================================
+
+\begin{frame}{Introdução}
+  \vfill
+  \begin{description}[O que este exame apresenta]
+    \setlength{\itemsep}{1.1em}
+    \item[\azul{O tema}] Como conteúdos culturais ganham e perdem visibilidade
+      em plataformas digitais.
+    \item[\azul{O objeto empírico}] Música nos charts brasileiros do Spotify, 2017--2021.
+    \item[\azul{A proposta}] Trocar a curva de popularidade isolada por um
+      \dest{grafo heterogêneo temporal} de músicas, artistas e gêneros.
+    \item[\azul{Este exame}] Proposta, resultados parciais e o que falta até a defesa.
+  \end{description}
+  \vfill
+  \begin{center}
+  {\small Fases 0 a 3 concluídas. Restam ablação, arquitetura alternativa e redação.}
+  \end{center}
+  \vfill
+\end{frame}
+
+%=====================================================
+\begin{frame}{Em uma frase}
+  \vfill
+  \begin{center}
+  \large
+  A difusão musical é melhor modelada como um \azul{grafo que evolui no tempo}\\
+  do que como uma \dest{curva epidêmica isolada}?
+  \end{center}
+  \vfill
+  \begin{center}
+  \begin{tikzpicture}[node distance=1.1cm]
+    \node[draw,rounded corners,fill=ufprB!12,draw=ufprB,minimum height=1.1cm,text width=2.9cm,align=center] (a) {\small Curvas de\\popularidade};
+    \node[draw,rounded corners,fill=ufprA!12,draw=ufprA,minimum height=1.1cm,text width=2.9cm,align=center,right=1.2cm of a] (b) {\small Grafo\\música--artista--gênero};
+    \node[draw,rounded corners,fill=ufprC!12,draw=ufprC,minimum height=1.1cm,text width=2.9cm,align=center,right=1.2cm of b] (c) {\small Previsão de\\ $k$ semanas à frente};
+    \draw[-{Latex[length=3mm]},thick] (a) -- (b);
+    \draw[-{Latex[length=3mm]},thick] (b) -- (c);
+  \end{tikzpicture}
+  \end{center}
+  \vfill
+\end{frame}
+
+%=====================================================
+\section{Motivação e problema}
+%=====================================================
+
+\begin{frame}{Uma música nasce, explode e desaparece}
+  \begin{columns}[T]
+  \begin{column}{0.58\textwidth}
+  \begin{center}
+  \begin{tikzpicture}
+  \begin{axis}[
+    width=7.6cm,height=5.0cm,
+    xlabel={\footnotesize semanas},ylabel={\footnotesize \emph{rank-score}},
+    xmin=0,xmax=30,ymin=0,ymax=0.52,
+    ytick={0,0.25,0.5},
+    tick label style={font=\scriptsize},
+    label style={font=\scriptsize},
+    axis lines=left,
+    ]
+    \addplot[ufprA,very thick,smooth] coordinates {
+      (0,0.005)(2,0.02)(4,0.09)(6,0.26)(8,0.45)(10,0.40)(12,0.30)
+      (14,0.22)(16,0.16)(18,0.11)(20,0.07)(24,0.03)(28,0.008)(30,0.003)};
+  \end{axis}
+  \end{tikzpicture}
+  \end{center}
+  \end{column}
+  \begin{column}{0.42\textwidth}
+  \vspace{1.2em}
+  \begin{itemize}
+    \item \azul{Top 200} $\rightarrow$ sucesso
+    \item \azul{Viral 50} $\rightarrow$ viralidade
+    \item Parece \dest{contágio}
+    \item A curva não diz \alert{por quê}
+  \end{itemize}
+  \end{column}
+  \end{columns}
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{Por que isso importa}
+  \vfill
+  \begin{columns}[T]
+    \begin{column}{0.33\textwidth}
+      \begin{center}
+      \colorbox{ufprA!12}{\parbox{0.95\textwidth}{\centering\vspace{6pt}\azul{Curadoria}\\[4pt]
+      \small priorizar faixas\\ para \emph{playlists}\vspace{6pt}}}
+      \end{center}
+    \end{column}
+    \begin{column}{0.33\textwidth}
+      \begin{center}
+      \colorbox{ufprC!12}{\parbox{0.95\textwidth}{\centering\vspace{6pt}\verd{Investimento}\\[4pt]
+      \small alocar verba\\ promocional\vspace{6pt}}}
+      \end{center}
+    \end{column}
+    \begin{column}{0.33\textwidth}
+      \begin{center}
+      \colorbox{ufprB!12}{\parbox{0.95\textwidth}{\centering\vspace{6pt}\dest{Antecipação}\\[4pt]
+      \small detectar músicas\\ em ascensão\vspace{6pt}}}
+      \end{center}
+    \end{column}
+  \end{columns}
+  \vfill
+  \begin{center}
+  Hoje: \dest{inspeção manual} das curvas de chart.
+  \end{center}
+  \vfill
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{A abordagem clássica: difusão como epidemia}
+  \begin{center}
+  \begin{tikzpicture}[node distance=1.9cm,every node/.style={font=\small}]
+    \node[circle,draw=ufprA,fill=ufprA!15,minimum size=1.3cm,thick] (S) {$S$};
+    \node[circle,draw=ufprB,fill=ufprB!15,minimum size=1.3cm,thick,right=of S] (I) {$I$};
+    \node[circle,draw=cinza,fill=cinza!15,minimum size=1.3cm,thick,right=of I] (R) {$R$};
+    \draw[-{Latex[length=3mm]},thick] (S) -- node[above]{$\beta$} (I);
+    \draw[-{Latex[length=3mm]},thick] (I) -- node[above]{$\gamma$} (R);
+    \node[below=0.2cm of S,font=\scriptsize,text width=2.4cm,align=center] {não ouviram};
+    \node[below=0.2cm of I,font=\scriptsize,text width=2.4cm,align=center] {atenção ativa};
+    \node[below=0.2cm of R,font=\scriptsize,text width=2.4cm,align=center] {perderam interesse};
+  \end{tikzpicture}
+  \end{center}
+  \vspace{0.6em}
+  \[\frac{dS}{dt}=-\beta SI \qquad \frac{dI}{dt}=\beta SI-\gamma I \qquad \frac{dR}{dt}=\gamma I\]
+  \vfill
+  \begin{center}
+  Cada música $\rightarrow$ \dest{dois números}: $\beta$, $\gamma$. \qquad $R_0 = \beta/\gamma$.
+  \end{center}
+  \vfill
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{A limitação: populações agregadas}
+  \begin{columns}[T]
+  \begin{column}{0.46\textwidth}
+    \begin{center}
+    \begin{tikzpicture}[scale=0.95]
+      \draw[->] (0,0) -- (4.2,0) node[right,font=\scriptsize]{$t$};
+      \draw[->] (0,0) -- (0,2.1);
+      \draw[ufprA,very thick] plot[smooth] coordinates {(0.1,0.05)(0.8,0.4)(1.5,1.6)(2.2,1.0)(3.0,0.4)(3.9,0.08)};
+      \node[ufprA,font=\scriptsize] at (2.9,1.6) {música A};
+      \begin{scope}[yshift=-2.6cm]
+      \draw[->] (0,0) -- (4.2,0) node[right,font=\scriptsize]{$t$};
+      \draw[->] (0,0) -- (0,2.1);
+      \draw[ufprB,very thick] plot[smooth] coordinates {(0.1,0.05)(0.8,0.4)(1.5,1.6)(2.2,1.0)(3.0,0.4)(3.9,0.08)};
+      \node[ufprB,font=\scriptsize] at (2.9,1.6) {música B};
+      \end{scope}
+    \end{tikzpicture}
+    \end{center}
+  \end{column}
+  \begin{column}{0.54\textwidth}
+    \vspace{1.5em}
+    \begin{itemize}
+      \item População $=$ três contagens
+      \item \dest{Mistura homogênea}
+      \item Sem indivíduo, sem vizinhança
+      \item Ajuste \dest{música a música}
+    \end{itemize}
+    \vspace{1em}
+    \begin{center}
+    Para o SIR, A e B são \emph{indistinguíveis}.
+    \end{center}
+  \end{column}
+  \end{columns}
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{A hipótese: a estrutura relacional carrega sinal}
+  \begin{center}
+  \begin{tikzpicture}[
+    every node/.style={font=\footnotesize},
+    mus/.style={circle,draw=ufprA,fill=ufprA!20,minimum size=0.75cm,thick},
+    art/.style={rectangle,rounded corners,draw=ufprB,fill=ufprB!20,minimum size=0.65cm,thick},
+    gen/.style={diamond,draw=ufprC,fill=ufprC!20,minimum size=0.8cm,thick,inner sep=1pt}]
+    \node[art] (a1) at (0,1.6) {$a_1$};
+    \node[art] (a2) at (0,-1.3) {$a_2$};
+    \node[mus] (m1) at (3,2.2) {$m_1$};
+    \node[mus] (m2) at (3,0.8) {$m_2$};
+    \node[mus] (m3) at (3,-1.3) {$m_3$};
+    \node[gen] (g1) at (-2.6,1.0) {$g_1$};
+    \node[gen] (g2) at (-2.6,-0.8) {$g_2$};
+    \draw[-{Latex[length=2mm]},ufprB,thick] (a1) -- node[above,sloped]{\tiny performs} (m1);
+    \draw[-{Latex[length=2mm]},ufprB,thick] (a1) -- (m2);
+    \draw[-{Latex[length=2mm]},ufprB,thick] (a2) -- (m3);
+    \draw[-{Latex[length=2mm]},ufprC,thick] (a1) -- node[above,sloped]{\tiny has\_genre} (g1);
+    \draw[-{Latex[length=2mm]},ufprC,thick] (a2) -- (g2);
+    \draw[-{Latex[length=2mm]},ufprC,thick] (a2) -- (g1);
+    \draw[ufprD,thick,dashed] (g1) -- node[left,pos=0.5]{\tiny cooccurs} (g2);
+    \draw[ufprA,thick,dotted] (m2) to[bend left=30] node[right]{\tiny cotrajectory} (m3);
+  \end{tikzpicture}
+  \end{center}
+  \vfill
+  \begin{center}
+  O que aconteceu com $m_2$ \dest{informa} o que vai acontecer com $m_3$.
+  \end{center}
+  \vfill
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{Pergunta de pesquisa}
+  \begin{block}{Central}
+    A \dest{estrutura heterogênea} e a \dest{temporalidade explícita} melhoram a modelagem
+    da difusão musical, frente a \emph{baselines} populacionais?
+  \end{block}
+  \vfill
+  \begin{itemize}
+    \item[\azul{Q1}] A GNN temporal \dest{supera o SIR}?
+    \item[\azul{Q2}] \dest{Quais relações} mais contribuem?
+    \item[\azul{Q3}] A \dest{interpretabilidade epidemiológica} sobrevive?
+  \end{itemize}
+  \vfill
+  {\footnotesize\color{cinza} Q1 respondida nos resultados parciais. Q2 e Q3 são os próximos passos.}
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{Contribuições esperadas}
+  \vfill
+  \begin{columns}[T]
+  \begin{column}{0.5\textwidth}
+    \begin{block}{1. Uma representação}
+      Grafo heterogêneo temporal para o domínio musical brasileiro.
+    \end{block}
+  \end{column}
+  \begin{column}{0.5\textwidth}
+    \begin{block}{2. Uma comparação controlada}
+      Modelo populacional, GNN estática e GNN temporal no mesmo \emph{pipeline}.
+    \end{block}
+  \end{column}
+  \end{columns}
+  \vfill
+  \begin{center}
+    Não só ``um modelo melhor'': o papel de\\
+    \azul{homofilia}, \azul{estrutura relacional} e \azul{temporalidade}.
+  \end{center}
+  \vfill
+\end{frame}
+
+%=====================================================
+\section{Fundamentação teórica}
+%=====================================================
+
+\begin{frame}{Difusão em redes: os dois modelos clássicos}
+  \begin{columns}[T]
+  \begin{column}{0.5\textwidth}
+  \begin{center}
+  \textbf{\azul{Independent Cascade}}\\[0.8em]
+  \begin{tikzpicture}[scale=0.95,every node/.style={font=\scriptsize},
+     n/.style={circle,draw,minimum size=0.55cm,inner sep=0pt}]
+    \node[n,fill=ufprB!50] (a) at (0,0) {};
+    \node[n] (b) at (1.5,0.8) {};
+    \node[n] (c) at (1.5,-0.8) {};
+    \node[n] (d) at (3.0,0) {};
+    \draw[-{Latex[length=2mm]}] (a) -- node[above,pos=0.5]{$p{=}0{,}3$} (b);
+    \draw[-{Latex[length=2mm]}] (a) -- node[below,pos=0.5]{$p{=}0{,}6$} (c);
+    \draw[-{Latex[length=2mm]}] (c) -- (d);
+  \end{tikzpicture}\\[1.0em]
+  \small uma chance por aresta
+  \end{center}
+  \end{column}
+  \begin{column}{0.5\textwidth}
+  \begin{center}
+  \textbf{\azul{Linear Threshold}}\\[0.8em]
+  \begin{tikzpicture}[scale=0.95,every node/.style={font=\scriptsize},
+     n/.style={circle,draw,minimum size=0.55cm,inner sep=0pt}]
+    \node[n,fill=ufprB!50] (a) at (0,0.9) {};
+    \node[n,fill=ufprB!50] (b) at (0,-0.9) {};
+    \node[n] (c) at (2.0,0) {$\theta{=}0{,}5$};
+    \draw[-{Latex[length=2mm]}] (a) -- node[above,sloped]{$0{,}3$} (c);
+    \draw[-{Latex[length=2mm]}] (b) -- node[below,sloped]{$0{,}3$} (c);
+  \end{tikzpicture}\\[1.0em]
+  \small influência acumulada passa de $\theta$
+  \end{center}
+  \end{column}
+  \end{columns}
+  \vfill
+  \begin{center}
+  A topologia condiciona o alcance --- mas em grafos \dest{homogêneos}.
+  \end{center}
+  \vfill
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{Homofilia}
+  \begin{center}
+  \begin{tikzpicture}[scale=1.0,every node/.style={font=\tiny},
+    p/.style={circle,draw=ufprA,fill=ufprA!35,minimum size=0.5cm,inner sep=0pt},
+    s/.style={circle,draw=ufprC,fill=ufprC!35,minimum size=0.5cm,inner sep=0pt}]
+    \node[p](p1) at (0,1){}; \node[p](p2) at (1.1,1.7){}; \node[p](p3) at (1.2,0.4){};
+    \node[s](s1) at (4.6,1.0){}; \node[s](s2) at (5.7,1.7){}; \node[s](s3) at (5.8,0.4){};
+    \draw (p1)--(p2); \draw (p2)--(p3); \draw (p1)--(p3);
+    \draw (s1)--(s2); \draw (s2)--(s3); \draw (s1)--(s3);
+    \draw[cinza,dashed] (p2)--(s1);
+    \node[font=\small,ufprA] at (0.8,-0.2) {sertanejo};
+    \node[font=\small,ufprC] at (5.4,-0.2) {funk};
+  \end{tikzpicture}
+  \end{center}
+  \vspace{0.5em}
+  \begin{block}{Definição}
+    Entidades \dest{semelhantes} tendem a se \dest{conectar}.
+  \end{block}
+  \begin{itemize}
+    \item É a \dest{premissa} que valida a agregação por vizinhança
+    \item Sem ela, a média dos vizinhos \emph{apaga} o sinal do nó
+    \item Evidência no nosso grafo: \azul{clustering 0,51 / 0,60} e comunidades coerentes
+  \end{itemize}
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{Grafo heterogêneo: o esquema}
+  \begin{center}
+  \begin{tikzpicture}[every node/.style={font=\small},node distance=2.2cm,
+    t/.style={rectangle,rounded corners,draw,thick,minimum width=2.2cm,minimum height=1.0cm}]
+    \node[t,draw=ufprB,fill=ufprB!15] (A) {\textbf{artist}};
+    \node[t,draw=ufprA,fill=ufprA!15,right=3.4cm of A] (M) {\textbf{music}};
+    \node[t,draw=ufprC,fill=ufprC!15,below=2.0cm of A] (G) {\textbf{genre}};
+    \draw[-{Latex[length=2.5mm]},thick,ufprB] (A) -- node[above]{performs} (M);
+    \draw[-{Latex[length=2.5mm]},thick,ufprC] (A) -- node[left]{has\_genre} (G);
+    \draw[-{Latex[length=2.5mm]},thick,ufprA] (M) to[loop right,looseness=6] node[right]{cotrajectory} (M);
+    \draw[-{Latex[length=2.5mm]},thick,ufprD] (G) to[loop below,looseness=6] node[below]{cooccurs} (G);
+    \draw[-{Latex[length=2.5mm]},thick,cinza,dashed] (G) to[bend right=30] node[left,pos=0.6]{\emph{reversa}} (A);
+  \end{tikzpicture}
+  \end{center}
+  \vfill
+  \begin{center}
+  3 tipos de nó \quad\textbullet\quad 4 relações semânticas $+$ 1 reversa\\[0.4em]
+  {\small Cada tipo tem \dest{seus próprios pesos}.}
+  \end{center}
+  \vfill
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{Grafos temporais: duas escolas}
+  \begin{columns}[T]
+  \begin{column}{0.5\textwidth}
+    \begin{center}
+    \textbf{\azul{Tempo discreto}} --- \emph{snapshots}\\[0.6em]
+    \begin{tikzpicture}[scale=0.68,every node/.style={font=\tiny}]
+      \foreach \i/\x in {1/0,2/3.2,3/6.4}{
+        \begin{scope}[xshift=\x cm]
+          \draw[rounded corners,draw=ufprA,fill=ufprA!8] (-0.5,-0.4) rectangle (2.4,2.1);
+          \node[circle,draw,fill=white,minimum size=0.32cm,inner sep=0pt] (a\i) at (0.1,1.6) {};
+          \node[circle,draw,fill=white,minimum size=0.32cm,inner sep=0pt] (b\i) at (1.7,1.6) {};
+          \node[circle,draw,fill=white,minimum size=0.32cm,inner sep=0pt] (c\i) at (0.9,0.2) {};
+          \node[font=\scriptsize,ufprA] at (0.95,-0.8) {$G_{t_\i}$};
+        \end{scope}}
+      \draw (a1)--(b1);
+      \draw (a2)--(b2); \draw (a2)--(c2);
+      \draw (a3)--(b3); \draw (a3)--(c3); \draw (b3)--(c3);
+      \draw[-{Latex[length=2mm]},cinza] (2.6,0.85)--(3.0,0.85);
+      \draw[-{Latex[length=2mm]},cinza] (5.8,0.85)--(6.2,0.85);
+    \end{tikzpicture}\\[1.0em]
+    \small EvolveGCN, DySAT
+    \end{center}
+  \end{column}
+  \begin{column}{0.5\textwidth}
+    \begin{center}
+    \textbf{\azul{Tempo contínuo}} --- eventos\\[0.6em]
+    \begin{tikzpicture}[scale=0.68,every node/.style={font=\tiny}]
+      \draw[->,thick] (0,0) -- (7,0) node[right,font=\scriptsize]{$t$};
+      \foreach \x/\lbl in {0.8/{$(u,v)$},2.1/{$(v,w)$},3.4/{$(u,w)$},5.0/{$(w,z)$},6.2/{$(u,z)$}}{
+        \draw[ufprB,thick] (\x,-0.15)--(\x,0.15);
+        \node[ufprB,rotate=45,anchor=west,font=\tiny] at (\x,0.25) {\lbl};}
+    \end{tikzpicture}\\[1.0em]
+    \small TGAT, TGN
+    \end{center}
+  \end{column}
+  \end{columns}
+  \vfill
+  \begin{block}{Escolha: \emph{snapshots} semanais}
+    O grão real dos dados já é semanal (\texttt{first\_seen\_week}); o alvo também.
+    Tempo contínuo faria sentido em \dest{vídeo curto} --- trabalho futuro.
+  \end{block}
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{GNN: passagem de mensagens}
+  \begin{center}
+  \begin{tikzpicture}[every node/.style={font=\scriptsize},
+     n/.style={circle,draw,thick,minimum size=0.68cm,inner sep=0pt}]
+    \node[n,draw=ufprA,fill=ufprA!25] (v0) at (0,0) {$v$};
+    \node[n] (u1) at (-1.5,1.3) {$u_1$};
+    \node[n] (u2) at (-1.9,-0.2) {$u_2$};
+    \node[n] (u3) at (-1.3,-1.4) {$u_3$};
+    \draw[-{Latex[length=2mm]},ufprB] (u1)--(v0);
+    \draw[-{Latex[length=2mm]},ufprB] (u2)--(v0);
+    \draw[-{Latex[length=2mm]},ufprB] (u3)--(v0);
+    \node[align=center,below=2.0cm of v0,font=\small] {\textbf{camada 1}};
+
+    \node[cinza] at (2.3,0) {\Large $\Rightarrow$};
+
+    \begin{scope}[xshift=5.2cm]
+    \node[n,draw=ufprA,fill=ufprA!45] (v1) at (0,0) {$v$};
+    \node[n,fill=ufprB!20] (w1) at (-1.5,1.3) {};
+    \node[n,fill=ufprB!20] (w2) at (-1.9,-0.2) {};
+    \node[n,fill=ufprB!20] (w3) at (-1.3,-1.4) {};
+    \node[n] (x1) at (-3.4,1.8) {};
+    \node[n] (x2) at (-3.6,0.3) {};
+    \node[n] (x3) at (-3.0,-1.7) {};
+    \draw[-{Latex[length=2mm]},ufprB] (w1)--(v1);
+    \draw[-{Latex[length=2mm]},ufprB] (w2)--(v1);
+    \draw[-{Latex[length=2mm]},ufprB] (w3)--(v1);
+    \draw[-{Latex[length=2mm]},cinza] (x1)--(w1);
+    \draw[-{Latex[length=2mm]},cinza] (x2)--(w2);
+    \draw[-{Latex[length=2mm]},cinza] (x3)--(w3);
+    \node[align=center,below=2.0cm of v1,font=\small] {\textbf{camada 2}};
+    \end{scope}
+  \end{tikzpicture}
+  \end{center}
+  \vspace{0.4em}
+  \begin{center}
+  \azul{Agregar} os vizinhos \quad$+$\quad \azul{atualizar} a própria representação.\\[0.4em]
+  {\small $L$ camadas $=$ raio de $L$ saltos.}
+  \end{center}
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{Famílias de arquiteturas}
+  \begin{columns}[T]
+  \begin{column}{0.48\textwidth}
+    \textbf{\azul{Homogêneas}}
+    \begin{itemize}\small
+      \item \textbf{GCN} --- agregação normalizada
+      \item \textbf{GraphSAGE} --- \dest{indutiva}
+      \item \textbf{GAT} --- atenção nos vizinhos
+    \end{itemize}
+  \end{column}
+  \begin{column}{0.48\textwidth}
+    \textbf{\azul{Heterogêneas}}
+    \begin{itemize}\small
+      \item \textbf{R-GCN} --- pesos por relação
+      \item \textbf{HAN} --- atenção por meta-caminho
+      \item \textbf{HGT} --- atenção por tipo
+    \end{itemize}
+  \end{column}
+  \end{columns}
+  \vfill
+  \begin{block}{Escolha: \emph{HeteroGraphSAGE}}
+    GraphSAGE com pesos próprios por relação. Indutivo, barato, média estável sob grau variável.
+  \end{block}
+  \vfill
+\end{frame}
+
+%=====================================================
+\section{Trabalhos relacionados e lacuna}
+%=====================================================
+
+\begin{frame}{Três literaturas que raramente se encontram}
+  \small
+  \begin{table}
+  \renewcommand{\arraystretch}{1.4}
+  \begin{tabular}{p{3.0cm}p{3.9cm}p{4.4cm}}
+  \toprule
+  \textbf{Linha} & \textbf{O que oferece} & \textbf{Onde para} \\
+  \midrule
+  \azul{Difusão e contágio}
+  & dinâmica temporal; poucos parâmetros interpretáveis
+  & nível populacional; ajuste curva a curva \\
+  \azul{GNNs heterogêneas e temporais}
+  & a representação relacional e dinâmica que falta acima
+  & quase nunca aplicadas à difusão musical \\
+  \azul{Previsão de sucesso musical}
+  & o problema preditivo, as métricas, os dados
+  & representação tabular; músicas isoladas \\
+  \bottomrule
+  \end{tabular}
+  \end{table}
+  \vfill
+  {\footnotesize\color{cinza} Kempe, Granovetter, Watts, Oliveira \emph{et al.} \textbullet{}
+  GCN, SAGE, GAT, HGT, EvolveGCN, TGN \textbullet{} Pachet, Interiano, MGD+}
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{A lacuna}
+  \begin{center}
+  \begin{tikzpicture}[every node/.style={font=\footnotesize,align=center}]
+    \node[circle,draw=ufprA,fill=ufprA!12,thick,minimum size=3.2cm] (a) at (-1.6,0) {};
+    \node[circle,draw=ufprB,fill=ufprB!12,thick,minimum size=3.2cm] (b) at (1.6,0) {};
+    \node[circle,draw=ufprC,fill=ufprC!12,thick,minimum size=3.2cm] (c) at (0,-2.1) {};
+    \node[font=\small] at (-2.9,1.1) {difusão\\ e contágio};
+    \node[font=\small] at (2.9,1.1) {GNN heterogênea\\ temporal};
+    \node[font=\small] at (0,-3.5) {previsão de\\ sucesso musical};
+    \node[ufprD,font=\bfseries\small] at (0,-0.8) {esta\\ dissertação};
+  \end{tikzpicture}
+  \end{center}
+  \vspace{0.3em}
+  \begin{center}
+  Grafo heterogêneo temporal \quad$+$\quad comparação direta com o SIR\\
+  \quad$+$\quad protocolo que respeita a ordem temporal.
+  \end{center}
+\end{frame}
+
+%=====================================================
+\section{Dados e metodologia}
+%=====================================================
+
+\begin{frame}{Visão geral do desenho experimental}
+  \begin{center}
+  \begin{tikzpicture}[every node/.style={font=\scriptsize,align=center},node distance=0.6cm,
+    b/.style={rectangle,rounded corners,draw,thick,minimum height=1.1cm,text width=2.3cm}]
+    \node[b,draw=cinza,fill=cinza!10] (d) {Charts BR\\ $+$ MGD+};
+    \node[b,draw=ufprB,fill=ufprB!12,right=of d] (p) {Pré-proces-\\samento};
+    \node[b,draw=ufprA,fill=ufprA!12,above right=0.35cm and 0.6cm of p] (g) {Grafo hetero-\\gêneo temporal};
+    \node[b,draw=ufprC,fill=ufprC!12,below right=0.35cm and 0.6cm of p] (s) {\emph{Baseline} SIR};
+    \node[b,draw=ufprA,fill=ufprA!12,right=of g] (n) {\textsc{MusicDiffusion}\\ \textsc{GNN}};
+    \node[b,draw=ufprD,fill=ufprD!12,below right=0.35cm and 0.6cm of n] (e) {Avaliação dupla\\ Modo 1 / Modo 2};
+    \draw[-{Latex[length=2mm]},thick] (d)--(p);
+    \draw[-{Latex[length=2mm]},thick] (p)--(g);
+    \draw[-{Latex[length=2mm]},thick] (p)--(s);
+    \draw[-{Latex[length=2mm]},thick] (g)--(n);
+    \draw[-{Latex[length=2mm]},thick] (n)--(e);
+    \draw[-{Latex[length=2mm]},thick] (s)-|(e);
+  \end{tikzpicture}
+  \end{center}
+  \vfill
+  \begin{enumerate}
+    \item Reproduzir o \emph{baseline} SIR
+    \item Construir o grafo preservando \dest{tempos de observação}
+    \item Comparar no \dest{mesmo eixo semanal}
+  \end{enumerate}
+  \vfill
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{Dados}
+  \begin{columns}[T]
+  \begin{column}{0.5\textwidth}
+    \vspace{0.6em}
+    \begin{itemize}
+      \item \azul{MGD+} --- metadados e atributos acústicos
+      \item \azul{Charts diários} do Spotify Brasil
+      \item \azul{2017--2021}
+    \end{itemize}
+  \end{column}
+  \begin{column}{0.5\textwidth}
+    \begin{center}
+    \begin{tabular}{lr}
+    \toprule
+    \textbf{Entidade} & \textbf{Contagem} \\
+    \midrule
+    Músicas & 6.526 \\
+    Artistas & 1.701 \\
+    Gêneros & 530 \\
+    \midrule
+    \emph{viral}$\cap$\emph{hit} & 1.981 \\
+    \bottomrule
+    \end{tabular}
+    \end{center}
+  \end{column}
+  \end{columns}
+  \vfill
+  \begin{center}
+  {\small O grafo é maior que o subconjunto avaliado: contexto estrutural extra.}
+  \end{center}
+  \vfill
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{Pré-processamento --- as seis etapas}
+  \begin{center}
+  \begin{tikzpicture}[every node/.style={font=\scriptsize,align=center},
+     b/.style={rectangle,rounded corners,draw,thick,minimum height=1.25cm,text width=2.0cm}]
+    \node[b,draw=cinza,fill=cinza!10] (r) at (0,0) {\textbf{1.} posição\\ diária};
+    \node[b,draw=ufprB,fill=ufprB!12] (s) at (2.6,0) {\textbf{2.} \emph{rank-score}};
+    \node[b,draw=ufprB,fill=ufprB!12] (m) at (5.2,0) {\textbf{3.} média móvel\\ 7 dias};
+    \node[b,draw=ufprA,fill=ufprA!12] (n) at (7.8,0) {\textbf{4.} \emph{min-max}\\ $[0;\,0{,}5]$};
+    \node[b,draw=ufprA,fill=ufprA!12] (f) at (10.4,0) {\textbf{5.} piso\\ $0{,}001$};
+    \node[b,draw=ufprC,fill=ufprC!12] (w) at (5.2,-2.2) {\textbf{6.} agregação\\ semanal};
+    \foreach \a/\b in {r/s,s/m,m/n,n/f}{\draw[-{Latex[length=2mm]},thick] (\a)--(\b);}
+    \draw[-{Latex[length=2mm]},thick] (f) |- (w);
+    \node[font=\scriptsize,cinza,text width=3.0cm] at (1.2,-2.2) {$\sim$1.900 pontos\\ diários};
+    \node[font=\scriptsize,cinza,text width=3.0cm] at (9.4,-2.2) {$\sim$260 pontos\\ semanais};
+  \end{tikzpicture}
+  \end{center}
+  \vfill
+  \begin{center}
+  Duas séries por música: \dest{viralidade} e \verd{sucesso}.
+  \end{center}
+  \vfill
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{Etapa 2 --- \emph{rank-score}}
+  \vfill
+  \[ \textit{rank\_score} = \textit{max\_rank} - rank + 1 \]
+  \vfill
+  \begin{columns}[T]
+  \begin{column}{0.46\textwidth}
+    \begin{itemize}
+      \item Ranking é \dest{ordinal e invertido}
+      \item Vira \azul{intensidade}
+      \item $\textit{max\_rank}$: 200 ou 50
+    \end{itemize}
+  \end{column}
+  \begin{column}{0.54\textwidth}
+    \begin{center}
+    \begin{tabular}{lrr}
+    \toprule
+    & \textbf{Top 200} & \textbf{Viral 50} \\
+    \midrule
+    \#1   & 200 & 50 \\
+    \#50  & 151 & 1 \\
+    \#200 & 1   & --- \\
+    \bottomrule
+    \end{tabular}
+    \end{center}
+  \end{column}
+  \end{columns}
+  \vfill
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{Etapas 3 a 5 --- suavizar, normalizar, aterrar}
+  \begin{columns}[T]
+  \begin{column}{0.5\textwidth}
+    \vspace{0.5em}
+    \begin{itemize}
+      \item \azul{Média móvel 7d} \\ {\small remove a sazonalidade semanal}
+      \item \azul{\emph{Min-max} $\rightarrow [0;\,0{,}5]$} \\ {\small o SIR opera sobre frações}
+      \item \azul{Piso $0{,}001$} \\ {\small evita derivada nula no ajuste}
+    \end{itemize}
+  \end{column}
+  \begin{column}{0.5\textwidth}
+    \begin{alertblock}{Sem vazamento no alvo}
+      Os limites são \dest{teóricos e fixos}:\\
+      $\textit{max\_rank}$ conhecido \emph{a priori}, piso constante.\\[0.5em]
+      \emph{Não} são o máximo empírico da série --- isso codificaria o pico futuro.
+    \end{alertblock}
+  \end{column}
+  \end{columns}
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{Atributos faltantes e o indicador binário}
+  \begin{center}
+  \begin{tikzpicture}[every node/.style={font=\small}]
+    \draw[fill=ufprA!15,draw=ufprA] (0,0) rectangle (5.0,0.7);
+    \node at (2.5,0.35) {9 atributos acústicos};
+    \draw[fill=ufprC!15,draw=ufprC] (5.0,0) rectangle (6.2,0.7);
+    \node at (5.6,0.35) {\footnotesize expl.};
+    \draw[fill=ufprC!15,draw=ufprC] (6.2,0) rectangle (7.4,0.7);
+    \node at (6.8,0.35) {\footnotesize tipo};
+    \draw[fill=ufprB!25,draw=ufprB,thick] (7.4,0) rectangle (8.9,0.7);
+    \node[ufprB] at (8.15,0.35) {\textbf{miss}};
+    \draw[decorate,decoration={brace,amplitude=5pt},thick] (0,0.9) -- (8.9,0.9)
+      node[midway,above,font=\small]{vetor de música: 12 dimensões};
+  \end{tikzpicture}
+  \end{center}
+  \vfill
+  \begin{columns}[T]
+  \begin{column}{0.5\textwidth}
+    \begin{itemize}
+      \item Faltante $\rightarrow$ \azul{mediana da coluna}
+      \item $+$ uma dimensão: $1$ se imputado
+    \end{itemize}
+  \end{column}
+  \begin{column}{0.5\textwidth}
+    \begin{block}{Por quê}
+      A imputação \emph{mente}; o indicador \dest{desfaz a mentira}.
+    \end{block}
+  \end{column}
+  \end{columns}
+  \vfill
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{Padronização por escore-$z$}
+  \vfill
+  \[ x' = \frac{x-\mu}{\sigma}, \qquad
+     \mu,\sigma \ \text{estimados \dest{só no treino}} \]
+  \vfill
+  \begin{columns}[T]
+  \begin{column}{0.5\textwidth}
+    \begin{block}{Por que padronizar}
+      Sem isso, a passagem de mensagens é dominada pela variável de maior escala.
+    \end{block}
+  \end{column}
+  \begin{column}{0.5\textwidth}
+    \begin{alertblock}{Por que só o treino}
+      $\mu$ e $\sigma$ são \dest{estatísticas aprendidas}. Calculá-las sobre todo o período
+      leva o teste para dentro do treino.
+    \end{alertblock}
+  \end{column}
+  \end{columns}
+  \vfill
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{\emph{Baseline} SIR}
+  \vfill
+  \begin{columns}[T]
+  \begin{column}{0.5\textwidth}
+    \begin{block}{Papel metodológico}
+      Reproduzir Oliveira \emph{et al.} (2025) e validar o \emph{pipeline}.
+    \end{block}
+  \end{column}
+  \begin{column}{0.5\textwidth}
+    \begin{block}{Papel conceitual}
+      Referência \dest{interpretável} para julgar o ganho da GNN.
+    \end{block}
+  \end{column}
+  \end{columns}
+  \vfill
+  \begin{itemize}
+    \item Mínimos quadrados não lineares sobre a EDO
+    \item Saída por música: $\beta$, $\gamma$, $R_0$
+    \item Métrica: \dest{RMSE}, separado por chart
+  \end{itemize}
+  \vfill
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{O grafo --- nós e atributos}
+  \begin{center}
+  \begin{tabular}{lcp{6.0cm}}
+  \toprule
+  \textbf{Tipo de nó} & \textbf{Dim.} & \textbf{Composição} \\
+  \midrule
+  \texttt{music}  & 12 & 9 acústicos $+$ explícito $+$ tipo $+$ indicador \\
+  \texttt{artist} & 1  & número de gêneros associados \\
+  \texttt{genre}  & 32 & \dest{\emph{embedding} aprendido} \\
+  \bottomrule
+  \end{tabular}
+  \end{center}
+  \vfill
+  \begin{block}{Por que gênero é \emph{embedding} aprendido}
+    Gêneros não têm atributos no \emph{dataset} --- só um rótulo.\\
+    Tabela $530\times32$ otimizada junto com os pesos: a rede descobre a geometria.
+  \end{block}
+  \vfill
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{O grafo --- arestas}
+  \begin{center}
+  \begin{tabular}{lr}
+  \toprule
+  \textbf{Tipo de aresta} & \textbf{Contagem} \\
+  \midrule
+  \texttt{artist} $\to$ \texttt{performs} $\to$ \texttt{music}   & 9.274 \\
+  \texttt{artist} $\to$ \texttt{has\_genre} $\to$ \texttt{genre} & 3.344 \\
+  \texttt{music} $\to$ \texttt{cotrajectory} $\to$ \texttt{music} & \dest{664.577} \\
+  \texttt{genre} $\to$ \texttt{cooccurs} $\to$ \texttt{genre}    & 9.866 \\
+  \bottomrule
+  \end{tabular}
+  \end{center}
+  \vfill
+  \begin{itemize}
+    \item Toda aresta carrega \texttt{first\_seen\_week}
+    \item \texttt{performs}: papel do artista, posição nos créditos
+    \item \texttt{cotrajectory}: similaridade calculada \dest{só até aquela semana}
+  \end{itemize}
+  \vfill
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{Snapshots e monotonicidade}
+  \begin{center}
+  \begin{tikzpicture}[every node/.style={font=\scriptsize}]
+    \foreach \i/\x in {1/0,2/4.0,3/8.0}{
+      \begin{scope}[xshift=\x cm]
+        \draw[rounded corners,draw=ufprA,thick,fill=ufprA!7] (-0.3,-0.3) rectangle (3.2,2.4);
+        \node[font=\small,ufprA] at (1.45,2.75) {$G_{t_\i}$};
+      \end{scope}}
+    \node[circle,draw,fill=white,minimum size=0.48cm,inner sep=0pt] (a1) at (0.3,1.8) {\tiny $m_1$};
+    \node[circle,draw,fill=white,minimum size=0.48cm,inner sep=0pt] (b1) at (2.5,1.8) {\tiny $m_2$};
+    \node[circle,draw,fill=white,minimum size=0.48cm,inner sep=0pt] (c1) at (1.4,0.3) {\tiny $a_1$};
+    \draw[ufprB] (c1)--(a1);
+    \node[circle,draw,fill=white,minimum size=0.48cm,inner sep=0pt] (a2) at (4.3,1.8) {\tiny $m_1$};
+    \node[circle,draw,fill=white,minimum size=0.48cm,inner sep=0pt] (b2) at (6.5,1.8) {\tiny $m_2$};
+    \node[circle,draw,fill=white,minimum size=0.48cm,inner sep=0pt] (c2) at (5.4,0.3) {\tiny $a_1$};
+    \draw[ufprB] (c2)--(a2); \draw[ufprB] (c2)--(b2);
+    \node[circle,draw,fill=white,minimum size=0.48cm,inner sep=0pt] (a3) at (8.3,1.8) {\tiny $m_1$};
+    \node[circle,draw,fill=white,minimum size=0.48cm,inner sep=0pt] (b3) at (10.5,1.8) {\tiny $m_2$};
+    \node[circle,draw,fill=white,minimum size=0.48cm,inner sep=0pt] (c3) at (9.4,0.3) {\tiny $a_1$};
+    \draw[ufprB] (c3)--(a3); \draw[ufprB] (c3)--(b3);
+    \draw[ufprA,dotted,thick] (a3)--(b3);
+    \node[cinza,font=\normalsize] at (3.6,1.0) {$\subseteq$};
+    \node[cinza,font=\normalsize] at (7.6,1.0) {$\subseteq$};
+  \end{tikzpicture}
+  \end{center}
+  \vfill
+  \begin{center}
+  $G_t$ contém apenas arestas com \texttt{first\_seen\_week} $\leq t$.\\[0.4em]
+  {\small Monotonicidade verificada automaticamente. Nada é gravado em disco.}
+  \end{center}
+  \vfill
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{Vazamento tem duas portas}
+  \vfill
+  \begin{columns}[T]
+  \begin{column}{0.5\textwidth}
+    \begin{block}{Porta 1 --- arestas}
+      \texttt{cotrajectory} calculada de forma ingênua usaria a série inteira.\\[0.4em]
+      \dest{Filtro por \texttt{first\_seen\_week}.}
+    \end{block}
+  \end{column}
+  \begin{column}{0.5\textwidth}
+    \begin{alertblock}{Porta 2 --- \emph{features} de nó}
+      O \emph{snapshot} filtra \dest{só arestas}. Agregados \emph{full-series} entrariam em todas as semanas.\\[0.4em]
+      \dest{Só metadados estáticos.}
+    \end{alertblock}
+  \end{column}
+  \end{columns}
+  \vfill
+  \begin{center}
+  Custo assumido: abrimos mão de \emph{features} muito preditivas.
+  \end{center}
+  \vfill
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{\textsc{MusicDiffusionGNN}: dois módulos}
+  \begin{center}
+  \begin{tikzpicture}[every node/.style={font=\scriptsize,align=center},
+    b/.style={rectangle,rounded corners,draw,thick,minimum height=1.1cm}]
+    \node[b,draw=ufprA,fill=ufprA!12,text width=2.3cm] (g) at (0,0) {\textbf{snapshot} $G_t$};
+    \node[b,draw=ufprA,fill=ufprA!20,text width=2.6cm] (enc) at (3.3,0) {\textbf{codificador}\\ HeteroGraphSAGE};
+    \node[b,draw=ufprD,fill=ufprD!15,text width=2.6cm] (bank) at (6.7,0) {\textbf{banco}\\ $t \mapsto \mathbf{Z}^{(t)}$};
+    \node[b,draw=ufprC,fill=ufprC!15,text width=2.4cm] (gru) at (10.0,0) {\textbf{cabeça temporal}\\ GRU $+$ MLP};
+    \node[b,draw=ufprB,fill=ufprB!15,text width=1.8cm] (y) at (10.0,-2.2) {$\hat{y}_i$};
+    \draw[-{Latex[length=2mm]},thick] (g)--(enc);
+    \draw[-{Latex[length=2mm]},thick] (enc)--(bank);
+    \draw[-{Latex[length=2mm]},thick] (bank)--(gru);
+    \draw[-{Latex[length=2mm]},thick] (gru)--(y);
+    \draw[-{Latex[length=2mm]},thick,ufprB,dashed] (y) -- ++(-3.2,0) node[midway,above,ufprB]{gradiente} -| (enc);
+    \node[cinza,text width=3.0cm] at (1.6,-1.6) {\emph{o que existe em $t$}};
+    \node[cinza,text width=3.2cm] at (8.4,-1.6) {\emph{como isso evoluiu}};
+  \end{tikzpicture}
+  \end{center}
+  \vfill
+  \begin{block}{Por que desacoplar}
+    O codificador não depende da música-alvo: \dest{uma passada por semana}, reutilizada por todas.\\
+    $\sim$500 mil passagens $\rightarrow$ \dest{260}.
+  \end{block}
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{Codificador --- a mensagem}
+  \vfill
+  \[
+  \mathbf{h}_v^{(r,\ell)} \;=\;
+  \underbrace{\mathbf{W}^{(\ell)}_{r,\text{self}}\,\mathbf{h}_v^{(\ell-1)}}_{\text{\footnotesize\textcolor{ufprA}{o próprio } } v}
+  \;+\;
+  \underbrace{\mathbf{W}^{(\ell)}_{r,\text{viz}} \cdot \operatorname{mean}_{u \in \mathcal{N}_r(v)} \mathbf{h}_u^{(\ell-1)}}_{\text{\footnotesize\textcolor{ufprB}{os vizinhos pela relação } } r}
+  \]
+  \vfill
+  \begin{itemize}
+    \item $\mathcal{N}_r(v)$ --- vizinhos \dest{só por aquela relação}
+    \item $\mathbf{W}_{r}$ --- matrizes \dest{diferentes por relação}: é o que torna o modelo heterogêneo
+    \item $\operatorname{mean}$ --- normaliza pelo grau
+    \item termo \emph{self} separado --- a identidade do nó não se dilui
+  \end{itemize}
+  \vfill
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{Codificador --- combinando relações}
+  \vfill
+  \[
+  \mathbf{h}_v^{(\ell)} = \operatorname{ReLU}\!\Bigg( \sum_{r \,\in\, \mathcal{R}(v)} \mathbf{h}_v^{(r,\ell)} \Bigg)
+  \]
+  \vfill
+  \begin{columns}[T]
+  \begin{column}{0.5\textwidth}
+    \begin{itemize}
+      \item Soma $\Rightarrow$ peso \dest{uniforme} por relação
+      \item É aqui que o \azul{HGT} entraria
+    \end{itemize}
+  \end{column}
+  \begin{column}{0.5\textwidth}
+    \begin{block}{Por que $L \geq 2$}
+      \begin{center}
+      \begin{tikzpicture}[every node/.style={font=\scriptsize},node distance=1.1cm]
+        \node[draw=ufprC,fill=ufprC!15,rounded corners,thick] (g) {genre};
+        \node[draw=ufprB,fill=ufprB!15,rounded corners,thick,right=of g] (a) {artist};
+        \node[draw=ufprA,fill=ufprA!15,rounded corners,thick,right=of a] (m) {music};
+        \draw[-{Latex[length=2mm]},thick] (g) -- node[above]{\tiny 1} (a);
+        \draw[-{Latex[length=2mm]},thick] (a) -- node[above]{\tiny 2} (m);
+      \end{tikzpicture}
+      \end{center}
+      \small O gênero só alcança a música em \dest{dois passos}.
+    \end{block}
+  \end{column}
+  \end{columns}
+  \vfill
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{Banco de \emph{embeddings}}
+  \begin{center}
+  \begin{tikzpicture}[every node/.style={font=\scriptsize,align=center}]
+    \node[draw=cinza,rounded corners,fill=cinza!8,text width=3.0cm,minimum height=1.7cm] (mb) at (0,0)
+      {\textbf{\emph{minibatch}}\\[3pt] $(m_7,44)$\\ $(m_{19},44)$\\ $(m_3,51)$};
+    \node[draw=ufprD,rounded corners,fill=ufprD!10,text width=3.4cm,minimum height=1.7cm] (need) at (4.3,0)
+      {semanas \emph{distintas}\\[3pt] $\{t_1,\dots,t_m\}$};
+    \node[draw=ufprA,rounded corners,fill=ufprA!12,text width=3.6cm,minimum height=1.7cm] (bank) at (8.8,0)
+      {$\mathcal{B}=\{\,t \mapsto \mathbf{Z}^{(t)}\,\}$\\[3pt] uma passada \emph{por semana}};
+    \draw[-{Latex[length=2mm]},thick] (mb)--(need);
+    \draw[-{Latex[length=2mm]},thick] (need)--(bank);
+  \end{tikzpicture}
+  \end{center}
+  \vfill
+  \begin{columns}[T]
+  \begin{column}{0.5\textwidth}
+    \begin{block}{Tabela de consulta}
+      Cada $\mathbf{Z}^{(t)}$ calculado \dest{uma vez}, compartilhado no lote.
+    \end{block}
+  \end{column}
+  \begin{column}{0.5\textwidth}
+    \begin{block}{Dentro do \emph{autograd}}
+      Sem \emph{detach}: o gradiente volta até o codificador. Treino \dest{de ponta a ponta}.
+    \end{block}
+  \end{column}
+  \end{columns}
+  \vfill
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{Subamostragem de \texttt{cotrajectory}}
+  \vfill
+  \begin{itemize}
+    \item 664.577 arestas no grafo de \emph{autograd} $\Rightarrow$ \dest{estouro de memória}
+    \item No treino: teto de $3{,}0\times10^{4}$ arestas por \emph{snapshot} (análogo a \emph{DropEdge})
+    \item Dupla função: memória $+$ \azul{regularização estrutural}
+  \end{itemize}
+  \vfill
+  \begin{alertblock}{Ponto de defesa}
+    O teto vale \dest{apenas no treino}. Na avaliação, o grafo \texttt{cotrajectory} é
+    \dest{completo} --- não é hiperparâmetro do modelo avaliado.
+  \end{alertblock}
+  \vfill
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{Cabeça temporal}
+  \vfill
+  \[ \mathbf{s}_i = \big( \mathbf{z}_i^{(w-W)}, \dots, \mathbf{z}_i^{(w-1)} \big)
+     \qquad\longrightarrow\qquad
+     \hat{y}_i = 0{,}5 \cdot \sigma\big(\operatorname{MLP}(\mathbf{h}_i)\big) \]
+  \vfill
+  \begin{columns}[T]
+  \begin{column}{0.5\textwidth}
+    \begin{itemize}
+      \item Janela \dest{causal}: nunca inclui $w$
+      \item Zeros $+$ \azul{máscara} antes da estreia
+      \item GRU de uma camada $+$ MLP
+    \end{itemize}
+  \end{column}
+  \begin{column}{0.5\textwidth}
+    \begin{block}{Sigmoide escalada}
+      Garante $\hat{y} \in [0;\,0{,}5]$ \dest{por arquitetura} --- truncar mataria o gradiente.
+    \end{block}
+  \end{column}
+  \end{columns}
+  \vfill
+  \begin{center}
+  \small O codificador diz \azul{``com quem''}; a GRU diz \azul{``como vem mudando''}.
+  \end{center}
+  \vfill
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{Treino e regularização}
+  \begin{columns}[T]
+  \begin{column}{0.46\textwidth}
+    \begin{center}
+    \small
+    \begin{tabular}{lc}
+    \toprule
+    \textbf{Hiperparâmetro} & \textbf{Valores} \\
+    \midrule
+    Janela $W$  & $\{4,\,8,\,\mathbf{12}\}$ \\
+    Dimensão $d$   & $\{64,\,\mathbf{128}\}$ \\
+    Camadas $L$    & $\{2,\,\mathbf{3}\}$ \\
+    Aprendizado & $\{10^{-3},\,5\!\times\!10^{-4}\}$ \\
+    \midrule
+    \emph{Dropout}        & $0{,}2$ \\
+    \emph{Weight decay}   & $10^{-5}$ \\
+    Épocas / paciência    & $100\,/\,10$ \\
+    \bottomrule
+    \end{tabular}
+    \end{center}
+    {\footnotesize Grade de 24 configurações.\\ MSE de validação: $7{,}5\times10^{-4}$.}
+  \end{column}
+  \begin{column}{0.54\textwidth}
+    \vspace{0.4em}
+    \begin{itemize}
+      \item \dest{\emph{Dropout}} --- age na \azul{arquitetura}
+      \item \dest{\emph{Weight decay}} --- age na \azul{função objetivo}
+      \item \dest{\emph{Early stopping}} --- age no \azul{tempo de treino}
+    \end{itemize}
+    \vspace{0.8em}
+    \begin{center}
+    \small Perda: MSE. \quad Otimizador: Adam.
+    \end{center}
+  \end{column}
+  \end{columns}
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{Protocolo: \emph{splits} cronológicos}
+  \begin{center}
+  \begin{tikzpicture}[every node/.style={font=\small}]
+    \fill[ufprA!25,draw=ufprA,thick] (0,0) rectangle (7.0,1.0);
+    \fill[ufprC!25,draw=ufprC,thick] (7.0,0) rectangle (8.8,1.0);
+    \fill[ufprB!25,draw=ufprB,thick] (8.8,0) rectangle (12.0,1.0);
+    \node at (3.5,0.5) {\textbf{TREINO}};
+    \node at (7.9,0.5) {\textbf{VAL.}};
+    \node at (10.4,0.5) {\textbf{TESTE}};
+    \node[below,font=\footnotesize] at (0,0) {jan/2017};
+    \node[below,font=\footnotesize] at (7.0,0) {jun/2020};
+    \node[below,font=\footnotesize] at (8.8,-0.5) {dez/2020};
+    \node[below,font=\footnotesize] at (12.0,0) {dez/2021};
+  \end{tikzpicture}
+  \end{center}
+  \vfill
+  \begin{itemize}
+    \item Alvo semanal: média dos \emph{rank-scores} diários na semana ISO
+    \item Cada semana pertence a \dest{exatamente uma partição}
+    \item Métrica: \dest{RMSE} por chart \quad\textbullet\quad referência ingênua: \azul{persistência}
+  \end{itemize}
+  \vfill
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{Dois regimes de avaliação}
+  \vfill
+  \begin{columns}[T]
+  \begin{column}{0.5\textwidth}
+    \begin{block}{Modo 1 --- reconstrução}
+      Trajetória inteira a partir de uma semente.\\[0.5em]
+      \dest{\emph{In-sample} para o SIR}: $\beta,\gamma$ ajustados àquela curva.\\[0.5em]
+      GNN: global e congelada.
+    \end{block}
+  \end{column}
+  \begin{column}{0.5\textwidth}
+    \begin{block}{Modo 2 --- previsão causal}
+      $k \in \{1,2,4\}$ semanas à frente.\\[0.5em]
+      SIR \dest{reajustado causalmente}: só pontos até a origem.\\[0.5em]
+      \dest{É o uso pretendido do modelo.}
+    \end{block}
+  \end{column}
+  \end{columns}
+  \vfill
+  \begin{center}
+  Mesmo modelo, mesmos pesos. O que muda é a \dest{tarefa}.
+  \end{center}
+  \vfill
+\end{frame}
+
+%=====================================================
+\section{Resultados parciais}
+%=====================================================
+
+\begin{frame}{Etapa 1 --- reprodução do \emph{baseline} SIR}
+  \begin{center}
+  \begin{tabular}{lccc}
+  \toprule
+  \textbf{Métrica} & \textbf{Alvo} & \textbf{Obtido} & \textbf{Status} \\
+  \midrule
+  RMSE viralidade            & $\approx 0{,}028$ & $0{,}0289$ & \verd{ok} \\
+  RMSE sucesso               & $\approx 0{,}052$ & $0{,}0471$ & \verd{ok} \\
+  Mann-Whitney $p$           & $p \ll 0{,}05$    & $1{,}61\times10^{-39}$ & \verd{ok} \\
+  Subconjunto \emph{viral}$\cap$\emph{hit} & $1.977$ & $1.981$ & \verd{ok} \\
+  Convergência               & $100\%$           & $100\%$ & \verd{ok} \\
+  \bottomrule
+  \end{tabular}
+  \end{center}
+  \vfill
+  \begin{itemize}
+    \item Pré-requisito: sem reprodução fiel, a comparação não seria defensável
+    \item Achado: \dest{padrão multi-onda} em $\approx$37\% do Top 200 eleva o RMSE médio
+  \end{itemize}
+  \vfill
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{Etapa 2 --- o grafo tem estrutura, não ruído}
+  \vfill
+  \begin{itemize}
+    \item \azul{\emph{Clustering} médio} --- \texttt{cotrajectory} $0{,}5126$, \texttt{cooccurs} $0{,}6040$
+    \item \azul{Comunidades (Louvain)} --- cinco maiores com 136, 119, 96, 60 e 43 gêneros
+    \item \azul{Graus} fortemente assimétricos, como em redes culturais
+    \item \azul{Nove validações} automatizadas, incluindo monotonicidade dos \emph{snapshots}
+  \end{itemize}
+  \vfill
+  \begin{block}{Por que isso importa}
+    Comunidades coerentes são evidência de \dest{homofilia} --- a condição sob a qual a agregação
+    por vizinhança ajuda.
+  \end{block}
+  \vfill
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{Modo 1 --- o SIR vence}
+  \begin{center}
+  \begin{tabular}{lrrrr}
+  \toprule
+  \textbf{Regime} & \textbf{GNN} & \textbf{SIR} & \textbf{GNN (\emph{on-chart})} & \textbf{SIR (\emph{on-chart})} \\
+  \midrule
+  Viral 50 & $0{,}0266$ & \dest{$0{,}0141$} & $0{,}1915$ & \dest{$0{,}1756$} \\
+  Top 200  & $0{,}0632$ & \dest{$0{,}0343$} & $0{,}1637$ & \dest{$0{,}1262$} \\
+  \bottomrule
+  \end{tabular}
+  \end{center}
+  \vfill
+  \begin{alertblock}{A comparação é estruturalmente desigual}
+    SIR: dois parâmetros livres ajustados à \dest{curva inteira}.\\
+    GNN: modelo \dest{global e congelado}, semente de 12 semanas.
+  \end{alertblock}
+  \vfill
+  \begin{center}
+  \small A diferença se estreita nas semanas \emph{on-chart}, onde a dinâmica importa.
+  \end{center}
+  \vfill
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{Modo 2 --- previsão causal}
+  \begin{columns}[T]
+  \begin{column}{0.40\textwidth}
+  \vspace{0.8em}
+  \begin{center}\footnotesize
+  \begin{tabular}{llrrr}
+  \toprule
+  & $k$ & \textbf{GNN} & \textbf{SIR} & \textbf{Pers.} \\
+  \midrule
+  Viral 50 & 1 & \dest{$0{,}0261$} & $0{,}0368$ & $0{,}0267$ \\
+           & 2 & \dest{$0{,}0345$} & $0{,}0604$ & $0{,}0375$ \\
+           & 4 & \dest{$0{,}0444$} & $0{,}0798$ & $0{,}0538$ \\
+  \midrule
+  Top 200  & 1 & $0{,}0238$ & $0{,}0458$ & \dest{$0{,}0231$} \\
+           & 2 & $0{,}0370$ & $0{,}0524$ & \dest{$0{,}0360$} \\
+           & 4 & \dest{$0{,}0513$} & $0{,}0636$ & $0{,}0520$ \\
+  \bottomrule
+  \end{tabular}
+  \end{center}
+  \end{column}
+  \begin{column}{0.60\textwidth}
+  \begin{center}
+  \begin{tikzpicture}
+  \begin{axis}[
+    width=7.6cm,height=5.4cm,
+    ybar,bar width=5.5pt,
+    ymin=0,ymax=0.09,
+    symbolic x coords={V1,V2,V4,T1,T2,T4},
+    xtick=data,
+    tick label style={font=\scriptsize},
+    label style={font=\scriptsize},
+    ylabel={RMSE},
+    legend style={font=\scriptsize,at={(0.5,1.18)},anchor=north,legend columns=3,draw=none},
+    ymajorgrids,grid style={cinza!30},
+    ]
+    \addplot[fill=ufprA!70,draw=ufprA] coordinates {(V1,0.0261)(V2,0.0345)(V4,0.0444)(T1,0.0238)(T2,0.0370)(T4,0.0513)};
+    \addplot[fill=ufprB!70,draw=ufprB] coordinates {(V1,0.0368)(V2,0.0604)(V4,0.0798)(T1,0.0458)(T2,0.0524)(T4,0.0636)};
+    \addplot[fill=cinza!50,draw=cinza] coordinates {(V1,0.0267)(V2,0.0375)(V4,0.0538)(T1,0.0231)(T2,0.0360)(T4,0.0520)};
+    \legend{GNN,SIR,Persistência}
+  \end{axis}
+  \end{tikzpicture}
+  \end{center}
+  \end{column}
+  \end{columns}
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{Modo 2 --- leitura}
+  \vfill
+  \begin{columns}[T]
+  \begin{column}{0.5\textwidth}
+    \begin{block}{Frente ao SIR}
+      \begin{itemize}
+        \item Vence nos \dest{6 cenários}
+        \item Wilcoxon: $p$ entre $6{,}5\!\times\!10^{-4}$ e $5{,}4\!\times\!10^{-32}$
+        \item Menor erro em \dest{64--77\%} das músicas
+        \item Margem \dest{cresce} com o horizonte
+      \end{itemize}
+    \end{block}
+  \end{column}
+  \begin{column}{0.5\textwidth}
+    \begin{alertblock}{Frente à persistência}
+      \begin{itemize}
+        \item \verd{Viral 50}: vence em todos os horizontes
+        \item \dest{Top 200}: só em $k{=}4$
+        \item Esperado --- sucesso consolidado varia pouco semana a semana
+      \end{itemize}
+    \end{alertblock}
+  \end{column}
+  \end{columns}
+  \vfill
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{Discussão --- modelos complementares}
+  \begin{center}
+  \begin{tikzpicture}[every node/.style={font=\small,align=center}]
+    \node[draw=ufprB,fill=ufprB!12,rounded corners,thick,text width=4.8cm,minimum height=2.2cm] (a) at (-3.2,0)
+      {\textbf{Modo 1 --- reconstrução}\\[5pt] \dest{SIR melhor}\\[5pt]
+       \footnotesize 2 parâmetros livres por curva};
+    \node[draw=ufprC,fill=ufprC!12,rounded corners,thick,text width=4.8cm,minimum height=2.2cm] (b) at (3.2,0)
+      {\textbf{Modo 2 --- previsão causal}\\[5pt] \verd{GNN melhor}\\[5pt]
+       \footnotesize preditor global, só passado};
+  \end{tikzpicture}
+  \end{center}
+  \vfill
+  \begin{alertblock}{Ressalva}
+    Atribuir o ganho \dest{especificamente à estrutura relacional} --- e não à maior flexibilidade
+    de um modelo neural --- é \dest{hipótese, não achado estabelecido}.
+  \end{alertblock}
+  \vfill
+\end{frame}
+
+%=====================================================
+\section{Próximos passos e cronograma}
+%=====================================================
+
+\begin{frame}{Quatro frentes até a defesa}
+  \vfill
+  \begin{enumerate}
+    \item \azul{\emph{Baseline} neural sem grafo} --- GRU sobre a série isolada.\\
+      {\small O \dest{grupo de controle}: separa flexibilidade neural de estrutura relacional.}
+    \item \azul{Interpretabilidade e ablação} --- remover cada tipo de aresta; análogos de
+      $\beta$, $\gamma$, $R_0$.\\
+      {\small Responde \dest{Q2} e \dest{Q3}.}
+    \item \azul{Arquitetura alternativa} --- HGT ou atenção por relação, tudo o mais fixo.\\
+      {\small Testa robustez e dá interpretabilidade extra.}
+    \item \azul{Consolidação e redação} --- comparação única sob as mesmas métricas.
+  \end{enumerate}
+  \vfill
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{Cronograma}
+  \begin{center}
+  \begin{tabular}{lcccccc}
+  \toprule
+  \textbf{Atividade} & \textbf{Ago} & \textbf{Set} & \textbf{Out} & \textbf{Nov} & \textbf{Dez} & \textbf{Jan} \\
+  \midrule
+  Qualificação                    & \textcolor{ufprB}{$\bullet$} & & & & & \\
+  \emph{Baseline} neural sem grafo &  & \textcolor{ufprA}{$\bullet$} & & & & \\
+  Interpretabilidade e ablação    &  & \textcolor{ufprA}{$\bullet$} & \textcolor{ufprA}{$\bullet$} & & & \\
+  Arquitetura alternativa de GNN  &  & & \textcolor{ufprA}{$\bullet$} & \textcolor{ufprA}{$\bullet$} & & \\
+  Análise comparativa             &  & & & \textcolor{ufprC}{$\bullet$} & \textcolor{ufprC}{$\bullet$} & \\
+  Redação da dissertação          &  & & & & \textcolor{ufprC}{$\bullet$} & \textcolor{ufprC}{$\bullet$} \\
+  Defesa                          &  & & & & & \textcolor{ufprB}{$\bullet$} \\
+  Publicação                      &  & & & & & \textcolor{ufprB}{$\bullet$} \\
+  \bottomrule
+  \end{tabular}
+  \end{center}
+  \vfill
+  \begin{center}\small Agosto de 2026 a janeiro de 2027.\end{center}
+  \vfill
+\end{frame}
+
+%-----------------------------------------------------
+\begin{frame}{Mensagens principais}
+  \vfill
+  \begin{enumerate}
+    \item[\azul{1.}] \emph{Baseline} SIR \dest{reproduzido fielmente} --- 5 de 5 critérios.
+    \item[\azul{2.}] Grafo com \dest{estrutura real} e \dest{sem vazamento} pelas duas portas.
+    \item[\azul{3.}] Na previsão causal, a GNN \dest{supera o SIR nos seis cenários},
+      com vantagem que cresce com o horizonte.
+    \item[\azul{4.}] Falta isolar \dest{quanto do ganho vem da estrutura} --- é o próximo experimento.
+  \end{enumerate}
+  \vfill
+  \begin{center}\large\azul{Obrigado. Perguntas?}\end{center}
+  \vfill
+\end{frame}
+
+\end{document}

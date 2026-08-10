@@ -526,7 +526,15 @@ def main() -> None:
     from music_diffusion_gnn.evaluation.sir_eval import run_sir_mode2
     from music_diffusion_gnn.models.baselines import persistence_multistep
     t0 = time.time()
-    sir_m2_df = run_sir_mode2(ts_df, origins, ks=ks)
+    sir_m2_path = RESULTS / "sir_m2.parquet"
+    if args.force or not sir_m2_path.exists():
+        # Heaviest single step (thousands of per-origin refits) — cache to survive
+        # a Colab disconnect; RESULTS may be Drive-backed for durability.
+        sir_m2_df = run_sir_mode2(ts_df, origins, ks=ks)
+        sir_m2_df.to_parquet(sir_m2_path)
+    else:
+        sir_m2_df = pd.read_parquet(sir_m2_path)
+        _banner(f"SIR Mode-2 cached: {len(sir_m2_df)} rows  [{sir_m2_path.relative_to(ROOT)}]")
     pers_df = persistence_multistep(weekly_df_full, origins, ks=ks)
     n_sir_excl = int((~sir_m2_df["converged"]).sum())
     _banner(f"SIR Mode-2: {len(sir_m2_df)} rows, {n_sir_excl} non-convergent  [{_elapsed(t0)}]")
