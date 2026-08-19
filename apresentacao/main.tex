@@ -135,9 +135,6 @@ PROGRAMA DE PÓS-GRADUAÇÃO EM INFORMÁTICA}
     \item[\azul{Este exame}] Proposta, resultados parciais e o que falta até a defesa.
   \end{description}
   \vfill
-  \begin{center}
-  {\small Fases 0 a 3 concluídas. Restam ablação, arquitetura alternativa e redação.}
-  \end{center}
   \vfill
 \end{frame}
 
@@ -424,7 +421,9 @@ PROGRAMA DE PÓS-GRADUAÇÃO EM INFORMÁTICA}
   \begin{itemize}
     \item É a \dest{premissa} que valida a agregação por vizinhança
     \item Sem ela, a média dos vizinhos \emph{apaga} o sinal do nó
-    \item Evidência no nosso grafo: \azul{clustering 0,51 / 0,60} e comunidades coerentes
+    \item Evidência no nosso grafo: \emph{clustering} \azul{0,51} entre músicas que sobem juntas
+          nas paradas e \azul{0,60} entre gêneros que coocorrem, cerca de \dest{17$\times$} o
+          esperado ao acaso
   \end{itemize}
 \end{frame}
 
@@ -593,24 +592,24 @@ PROGRAMA DE PÓS-GRADUAÇÃO EM INFORMÁTICA}
 \end{frame}
 
 %-----------------------------------------------------
-\begin{frame}{A lacuna}
-  \begin{center}
-  \begin{tikzpicture}[every node/.style={font=\footnotesize,align=center}]
-    \node[circle,draw=ufprA,fill=ufprA!12,thick,minimum size=3.2cm] (a) at (-1.6,0) {};
-    \node[circle,draw=ufprB,fill=ufprB!12,thick,minimum size=3.2cm] (b) at (1.6,0) {};
-    \node[circle,draw=ufprC,fill=ufprC!12,thick,minimum size=3.2cm] (c) at (0,-2.1) {};
-    \node[font=\small] at (-2.9,1.1) {difusão\\ e contágio};
-    \node[font=\small] at (2.9,1.1) {GNN heterogênea\\ temporal};
-    \node[font=\small] at (0,-3.5) {previsão de\\ sucesso musical};
-    \node[ufprD,font=\bfseries\small] at (0,-0.8) {esta\\ dissertação};
-  \end{tikzpicture}
-  \end{center}
-  \vspace{0.3em}
-  \begin{center}
-  Grafo heterogêneo temporal \quad$+$\quad comparação direta com o SIR\\
-  \quad$+$\quad protocolo que respeita a ordem temporal.
-  \end{center}
-\end{frame}
+% \begin{frame}{A lacuna}
+%   \begin{center}
+%   \begin{tikzpicture}[every node/.style={font=\footnotesize,align=center}]
+%     \node[circle,draw=ufprA,fill=ufprA!12,thick,minimum size=3.2cm] (a) at (-1.6,0) {};
+%     \node[circle,draw=ufprB,fill=ufprB!12,thick,minimum size=3.2cm] (b) at (1.6,0) {};
+%     \node[circle,draw=ufprC,fill=ufprC!12,thick,minimum size=3.2cm] (c) at (0,-2.1) {};
+%     \node[font=\small] at (-2.9,1.1) {difusão\\ e contágio};
+%     \node[font=\small] at (2.9,1.1) {GNN heterogênea\\ temporal};
+%     \node[font=\small] at (0,-3.5) {previsão de\\ sucesso musical};
+%     \node[ufprD,font=\bfseries\small] at (0,-0.8) {esta\\ dissertação};
+%   \end{tikzpicture}
+%   \end{center}
+%   \vspace{0.3em}
+%   \begin{center}
+%   Grafo heterogêneo temporal \quad$+$\quad comparação direta com o SIR\\
+%   \quad$+$\quad protocolo que respeita a ordem temporal.
+%   \end{center}
+% \end{frame}
 
 %=====================================================
 \section{Dados e metodologia}
@@ -767,6 +766,15 @@ PROGRAMA DE PÓS-GRADUAÇÃO EM INFORMÁTICA}
     \draw[decorate,decoration={brace,amplitude=5pt},thick] (0,0.9) -- (8.9,0.9)
       node[midway,above,font=\small]{vetor de música: 12 dimensões};
   \end{tikzpicture}
+  \end{center}
+  \vspace{0.3em}
+  \begin{center}
+  {\footnotesize
+  \texttt{danceability} \textbullet\ \texttt{energy} \textbullet\ \texttt{valence} \textbullet\
+  \texttt{acousticness} \textbullet\ \texttt{instrumentalness} \textbullet\ \texttt{liveness} \textbullet\
+  \texttt{speechiness} \textbullet\ \texttt{loudness} \textbullet\ \texttt{tempo}\\[0.25em]
+  \textcolor{cinza}{\emph{valence} $=$ quão positiva a faixa soa \quad \emph{energy} $=$ intensidade percebida
+  \quad \emph{tempo} $=$ BPM}}
   \end{center}
   \vfill
   \begin{columns}[T]
@@ -927,9 +935,6 @@ PROGRAMA DE PÓS-GRADUAÇÃO EM INFORMÁTICA}
   \end{column}
   \end{columns}
   \vfill
-  \begin{center}
-  Custo assumido: abrimos mão de \emph{features} muito preditivas.
-  \end{center}
   \vfill
 \end{frame}
 
@@ -973,7 +978,8 @@ PROGRAMA DE PÓS-GRADUAÇÃO EM INFORMÁTICA}
     \item $\mathcal{N}_r(v)$ --- vizinhos \dest{só por aquela relação}
     \item $\mathbf{W}_{r}$ --- matrizes \dest{diferentes por relação}: é o que torna o modelo heterogêneo
     \item $\operatorname{mean}$ --- normaliza pelo grau
-    \item termo \emph{self} separado --- a identidade do nó não se dilui
+    \item $\mathbf{h}_v^{(\ell-1)}$ --- o vetor do nó $v$ ao sair da camada
+      anterior; na primeira camada, são os \dest{atributos de entrada}
   \end{itemize}
   \vfill
 \end{frame}
@@ -1010,70 +1016,29 @@ PROGRAMA DE PÓS-GRADUAÇÃO EM INFORMÁTICA}
   \vfill
 \end{frame}
 
-%-----------------------------------------------------
-\begin{frame}{Banco de \emph{embeddings}}
-  \begin{center}
-  \begin{tikzpicture}[every node/.style={font=\scriptsize,align=center}]
-    \node[draw=cinza,rounded corners,fill=cinza!8,text width=3.0cm,minimum height=1.7cm] (mb) at (0,0)
-      {\textbf{\emph{minibatch}}\\[3pt] $(m_7,44)$\\ $(m_{19},44)$\\ $(m_3,51)$};
-    \node[draw=ufprD,rounded corners,fill=ufprD!10,text width=3.4cm,minimum height=1.7cm] (need) at (4.3,0)
-      {semanas \emph{distintas}\\[3pt] $\{t_1,\dots,t_m\}$};
-    \node[draw=ufprA,rounded corners,fill=ufprA!12,text width=3.6cm,minimum height=1.7cm] (bank) at (8.8,0)
-      {$\mathcal{B}=\{\,t \mapsto \mathbf{Z}^{(t)}\,\}$\\[3pt] uma passada \emph{por semana}};
-    \draw[-{Latex[length=2mm]},thick] (mb)--(need);
-    \draw[-{Latex[length=2mm]},thick] (need)--(bank);
-  \end{tikzpicture}
-  \end{center}
-  \vfill
-  \begin{columns}[T]
-  \begin{column}{0.5\textwidth}
-    \begin{block}{Tabela de consulta}
-      Cada $\mathbf{Z}^{(t)}$ calculado \dest{uma vez}, compartilhado no lote.
-    \end{block}
-  \end{column}
-  \begin{column}{0.5\textwidth}
-    \begin{block}{Dentro do \emph{autograd}}
-      Sem \emph{detach}: o gradiente volta até o codificador. Treino \dest{de ponta a ponta}.
-    \end{block}
-  \end{column}
-  \end{columns}
-  \vfill
-\end{frame}
-
-%-----------------------------------------------------
-\begin{frame}{Subamostragem de \texttt{cotrajectory}}
-  \vfill
-  \begin{itemize}
-    \item 664.577 arestas no grafo de \emph{autograd} $\Rightarrow$ \dest{estouro de memória}
-    \item No treino: teto de $3{,}0\times10^{4}$ arestas por \emph{snapshot} (análogo a \emph{DropEdge})
-    \item Dupla função: memória $+$ \azul{regularização estrutural}
-  \end{itemize}
-  \vfill
-  \begin{alertblock}{Ponto de defesa}
-    O teto vale \dest{apenas no treino}. Na avaliação, o grafo \texttt{cotrajectory} é
-    \dest{completo} --- não é hiperparâmetro do modelo avaliado.
-  \end{alertblock}
-  \vfill
-\end{frame}
 
 %-----------------------------------------------------
 \begin{frame}{Cabeça temporal}
   \vfill
   \[ \mathbf{s}_i = \big( \mathbf{z}_i^{(w-W)}, \dots, \mathbf{z}_i^{(w-1)} \big)
      \qquad\longrightarrow\qquad
-     \hat{y}_i = 0{,}5 \cdot \sigma\big(\operatorname{MLP}(\mathbf{h}_i)\big) \]
+     \hat{y}_i = \operatorname{clamp}\big( y_i^{(w-1)} + \Delta_i,\; 0,\; 0{,}5 \big),
+     \quad \Delta_i = \operatorname{MLP}(\mathbf{h}_i) \]
   \vfill
   \begin{columns}[T]
   \begin{column}{0.5\textwidth}
     \begin{itemize}
-      \item Janela \dest{causal}: nunca inclui $w$
+      \item Janela \dest{causal}: nunca inclui $w$; a âncora $y^{(w-1)}$ é sempre passada
       \item Zeros $+$ \azul{máscara} antes da estreia
       \item GRU de uma camada $+$ MLP
     \end{itemize}
   \end{column}
   \begin{column}{0.5\textwidth}
-    \begin{block}{Sigmoide escalada}
-      Garante $\hat{y} \in [0;\,0{,}5]$ \dest{por arquitetura} --- truncar mataria o gradiente.
+    \begin{block}{Cabeça residual}
+      A rede prevê o \dest{incremento} sobre o último valor observado, não o valor
+      absoluto.\\[0.4em]
+      Última camada com \azul{inicialização em zero}: o modelo não treinado
+      \emph{reproduz a persistência}.
     \end{block}
   \end{column}
   \end{columns}
@@ -1113,6 +1078,8 @@ PROGRAMA DE PÓS-GRADUAÇÃO EM INFORMÁTICA}
       \item \dest{\emph{Dropout}} --- age na \azul{arquitetura}
       \item \dest{\emph{Weight decay}} --- age na \azul{função objetivo}
       \item \dest{\emph{Early stopping}} --- age no \azul{tempo de treino}
+      \item \dest{\emph{DropEdge}} --- age na \azul{estrutura}: teto de $3{,}0\times10^{4}$ arestas
+            de \texttt{cotrajectory} por \emph{snapshot}, \alert{só no treino}
     \end{itemize}
     \vspace{0.8em}
     \begin{center}
@@ -1194,7 +1161,6 @@ PROGRAMA DE PÓS-GRADUAÇÃO EM INFORMÁTICA}
   \vfill
   \begin{itemize}
     \item Pré-requisito: sem reprodução fiel, a comparação não seria defensável
-    \item Achado: \dest{padrão multi-onda} em $\approx$37\% do Top 200 eleva o RMSE médio
   \end{itemize}
   \vfill
 \end{frame}
@@ -1206,7 +1172,6 @@ PROGRAMA DE PÓS-GRADUAÇÃO EM INFORMÁTICA}
     \item \azul{\emph{Clustering} médio} --- \texttt{cotrajectory} $0{,}5126$, \texttt{cooccurs} $0{,}6040$
     \item \azul{Comunidades (Louvain)} --- cinco maiores com 136, 119, 96, 60 e 43 gêneros
     \item \azul{Graus} fortemente assimétricos, como em redes culturais
-    \item \azul{Nove validações} automatizadas, incluindo monotonicidade dos \emph{snapshots}
   \end{itemize}
   \vfill
   \begin{block}{Por que isso importa}
@@ -1377,18 +1342,65 @@ PROGRAMA DE PÓS-GRADUAÇÃO EM INFORMÁTICA}
 \end{frame}
 
 %-----------------------------------------------------
-\begin{frame}{Mensagens principais}
+\begin{frame}[plain]
   \vfill
-  \begin{enumerate}
-    \item[\azul{1.}] \emph{Baseline} SIR \dest{reproduzido fielmente} --- 5 de 5 critérios.
-    \item[\azul{2.}] Grafo com \dest{estrutura real} e \dest{sem vazamento} pelas duas portas.
-    \item[\azul{3.}] Na previsão causal, a GNN \dest{supera o SIR nos seis cenários},
-      com vantagem que cresce com o horizonte.
-    \item[\azul{4.}] Falta isolar \dest{quanto do ganho vem da estrutura} --- é o próximo experimento.
-  \end{enumerate}
-  \vfill
-  \begin{center}\large\azul{Obrigado. Perguntas?}\end{center}
+  \begin{center}\Huge\azul{Obrigado! Perguntas?}\end{center}
   \vfill
 \end{frame}
+
+
+%%=====================================================
+%% APÊNDICE --- quadros de reserva (fora da contagem e do sumário)
+%%=====================================================
+% \appendix
+% \begin{frame}[plain]
+%   \begin{center}\large\textcolor{cinza}{Slides de reserva}\end{center}
+% \end{frame}
+
+%%-----------------------------------------------------
+% \begin{frame}{Banco de \emph{embeddings}}
+%   \begin{center}
+%   \begin{tikzpicture}[every node/.style={font=\scriptsize,align=center}]
+%     \node[draw=cinza,rounded corners,fill=cinza!8,text width=3.0cm,minimum height=1.7cm] (mb) at (0,0)
+%       {\textbf{\emph{minibatch}}\\[3pt] $(m_7,44)$\\ $(m_{19},44)$\\ $(m_3,51)$};
+%     \node[draw=ufprD,rounded corners,fill=ufprD!10,text width=3.4cm,minimum height=1.7cm] (need) at (4.3,0)
+%       {semanas \emph{distintas}\\[3pt] $\{t_1,\dots,t_m\}$};
+%     \node[draw=ufprA,rounded corners,fill=ufprA!12,text width=3.6cm,minimum height=1.7cm] (bank) at (8.8,0)
+%       {$\mathcal{B}=\{\,t \mapsto \mathbf{Z}^{(t)}\,\}$\\[3pt] uma passada \emph{por semana}};
+%     \draw[-{Latex[length=2mm]},thick] (mb)--(need);
+%     \draw[-{Latex[length=2mm]},thick] (need)--(bank);
+%   \end{tikzpicture}
+%   \end{center}
+%   \vfill
+%   \begin{columns}[T]
+%   \begin{column}{0.5\textwidth}
+%     \begin{block}{Tabela de consulta}
+%       Cada $\mathbf{Z}^{(t)}$ calculado \dest{uma vez}, compartilhado no lote.
+%     \end{block}
+%   \end{column}
+%   \begin{column}{0.5\textwidth}
+%     \begin{block}{Dentro do \emph{autograd}}
+%       Sem \emph{detach}: o gradiente volta até o codificador. Treino \dest{de ponta a ponta}.
+%     \end{block}
+%   \end{column}
+%   \end{columns}
+%   \vfill
+% \end{frame}
+
+%%-----------------------------------------------------
+% \begin{frame}{Subamostragem de \texttt{cotrajectory}}
+%   \vfill
+%   \begin{itemize}
+%     \item 664.577 arestas no grafo de \emph{autograd} $\Rightarrow$ \dest{estouro de memória}
+%     \item No treino: teto de $3{,}0\times10^{4}$ arestas por \emph{snapshot} (análogo a \emph{DropEdge})
+%     \item Dupla função: memória $+$ \azul{regularização estrutural}
+%   \end{itemize}
+%   \vfill
+%   \begin{alertblock}{Ponto de defesa}
+%     O teto vale \dest{apenas no treino}. Na avaliação, o grafo \texttt{cotrajectory} é
+%     \dest{completo} --- não é hiperparâmetro do modelo avaliado.
+%   \end{alertblock}
+%   \vfill
+% \end{frame}
 
 \end{document}

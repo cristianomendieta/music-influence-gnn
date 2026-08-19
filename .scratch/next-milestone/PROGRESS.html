@@ -1,0 +1,477 @@
+<title>Marco Pós-Qualificação</title>
+<style>
+  :root {
+    --bg: #f6f5f1;
+    --bg-raised: #ffffff;
+    --ink: #1c1e1a;
+    --ink-soft: #52564c;
+    --ink-faint: #8b8f83;
+    --line: #dedad0;
+    --line-strong: #c7c2b3;
+    --accent: #2f5d4c;
+    --accent-soft: #e4ede8;
+    --accent-ink: #1c3f32;
+    --warn: #a15a2c;
+    --warn-soft: #f3e6d9;
+    --blocked: #7a7566;
+    --blocked-soft: #eae7de;
+    --mono: "IBM Plex Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14161a;
+      --bg-raised: #1b1e23;
+      --ink: #e9e8e2;
+      --ink-soft: #b3b2a8;
+      --ink-faint: #767a72;
+      --line: #2c2f33;
+      --line-strong: #3b3f43;
+      --accent: #6fbfa0;
+      --accent-soft: #1f2f2a;
+      --accent-ink: #a9dfc7;
+      --warn: #d59463;
+      --warn-soft: #332821;
+      --blocked: #8d9089;
+      --blocked-soft: #24261f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14161a;
+    --bg-raised: #1b1e23;
+    --ink: #e9e8e2;
+    --ink-soft: #b3b2a8;
+    --ink-faint: #767a72;
+    --line: #2c2f33;
+    --line-strong: #3b3f43;
+    --accent: #6fbfa0;
+    --accent-soft: #1f2f2a;
+    --accent-ink: #a9dfc7;
+    --warn: #d59463;
+    --warn-soft: #332821;
+    --blocked: #8d9089;
+    --blocked-soft: #24261f;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  main {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 4rem 1.5rem 6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 3.25rem;
+  }
+
+  /* ---- header ---- */
+  header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 2rem;
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .eyebrow::before {
+    content: "";
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: inline-block;
+  }
+  h1 {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: clamp(1.9rem, 4vw, 2.6rem);
+    margin: 0;
+    text-wrap: balance;
+    color: var(--ink);
+  }
+  .dek {
+    font-size: 1.02rem;
+    color: var(--ink-soft);
+    max-width: 60ch;
+  }
+  .meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.6rem;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: var(--ink-faint);
+    margin-top: 0.4rem;
+  }
+  .meta-row b { color: var(--ink-soft); font-weight: 600; }
+
+  /* ---- section headings ---- */
+  h2 {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: 1.35rem;
+    margin: 0 0 0.3rem;
+    color: var(--ink);
+  }
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .section-note {
+    font-size: 0.85rem;
+    color: var(--ink-faint);
+    font-family: var(--mono);
+  }
+
+  /* ---- progress band ---- */
+  .stat-band {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .stat {
+    background: var(--bg-raised);
+    padding: 1.1rem 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .stat .num {
+    font-family: var(--serif);
+    font-size: 1.7rem;
+    color: var(--accent-ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .stat .label {
+    font-size: 0.74rem;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  /* ---- progress bar ---- */
+  .bar-track {
+    height: 8px;
+    border-radius: 5px;
+    background: var(--blocked-soft);
+    overflow: hidden;
+    border: 1px solid var(--line);
+  }
+  .bar-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 5px 0 0 5px;
+  }
+  .bar-label {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--ink-faint);
+    margin-top: 0.4rem;
+  }
+
+  /* ---- issue cards (done) ---- */
+  .cards {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .card {
+    background: var(--bg-raised);
+    padding: 1.4rem 1.5rem;
+    display: grid;
+    grid-template-columns: 3rem 1fr;
+    gap: 1.1rem;
+  }
+  .card .idx {
+    font-family: var(--mono);
+    font-size: 0.95rem;
+    color: var(--accent-ink);
+    padding-top: 0.15rem;
+  }
+  .card .body { display: flex; flex-direction: column; gap: 0.5rem; }
+  .card .title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    flex-wrap: wrap;
+  }
+  .card h3 {
+    font-family: var(--serif);
+    font-size: 1.08rem;
+    font-weight: 500;
+    margin: 0;
+    color: var(--ink);
+  }
+  .chip {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0.18rem 0.5rem;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .chip.done { background: var(--accent-soft); color: var(--accent-ink); }
+  .chip.ready { background: var(--warn-soft); color: var(--warn); }
+  .chip.blocked { background: var(--blocked-soft); color: var(--blocked); }
+  .card p {
+    margin: 0;
+    color: var(--ink-soft);
+    font-size: 0.94rem;
+    max-width: 68ch;
+  }
+  .card .detail {
+    margin-top: 0.15rem;
+    font-size: 0.87rem;
+    color: var(--ink-soft);
+    background: var(--accent-soft);
+    border-left: 2px solid var(--accent);
+    padding: 0.6rem 0.8rem;
+    border-radius: 0 6px 6px 0;
+  }
+  .card .detail b { color: var(--accent-ink); }
+  .card code {
+    font-family: var(--mono);
+    font-size: 0.85em;
+    background: var(--blocked-soft);
+    padding: 0.05rem 0.35rem;
+    border-radius: 4px;
+    color: var(--ink);
+  }
+  .card .finding {
+    font-size: 0.87rem;
+    color: var(--warn);
+    font-style: italic;
+  }
+
+  /* ---- roadmap table ---- */
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+  table { border-collapse: collapse; width: 100%; min-width: 640px; background: var(--bg-raised); }
+  thead th {
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ink-faint);
+    padding: 0.7rem 0.9rem;
+    border-bottom: 1px solid var(--line-strong);
+  }
+  tbody td {
+    padding: 0.65rem 0.9rem;
+    border-bottom: 1px solid var(--line);
+    font-size: 0.88rem;
+    vertical-align: top;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr.is-done { background: var(--accent-soft); }
+  td.idx { font-family: var(--mono); color: var(--ink-faint); width: 2.4rem; }
+  td.dep { font-family: var(--mono); font-size: 0.78rem; color: var(--ink-faint); white-space: nowrap; }
+  td.status .chip { display: inline-block; }
+
+  /* ---- footer ---- */
+  footer {
+    border-top: 1px solid var(--line);
+    padding-top: 1.6rem;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    font-family: var(--mono);
+    font-size: 0.76rem;
+    color: var(--ink-faint);
+  }
+  footer a { color: var(--accent-ink); text-decoration: none; border-bottom: 1px solid var(--line-strong); }
+
+  @media (max-width: 560px) {
+    .card { grid-template-columns: 1fr; }
+    .card .idx { display: none; }
+  }
+</style>
+
+<main>
+
+  <header>
+    <span class="eyebrow">music-influence-gnn · marco pós-qualificação</span>
+    <h1>Onde estamos depois da qualificação</h1>
+    <p class="dek">
+      Acompanhamento dos 15 itens definidos na sessão de grilling de 2026-08-18
+      (<code>.scratch/next-milestone/issues/</code>). Esta página é atualizada a cada
+      sessão de implementação — não é a dissertação, é o mapa de trabalho.
+    </p>
+    <div class="meta-row">
+      <span>commit <b>acd11b3</b></span>
+      <span>2026-08-18</span>
+      <span>121 testes passando</span>
+      <span>15 arquivos alterados</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="section-head">
+      <h2>Progresso do marco</h2>
+      <span class="section-note">6 de 15 itens concluídos</span>
+    </div>
+    <div class="bar-track"><div class="bar-fill" style="width: 40%"></div></div>
+    <div class="bar-label"><span>01–03, 11–13 fechados</span><span>40%</span></div>
+    <div class="stat-band" style="margin-top: 1.1rem;">
+      <div class="stat"><span class="num">6</span><span class="label">itens fechados</span></div>
+      <div class="stat"><span class="num">1</span><span class="label">item desbloqueado agora</span></div>
+      <div class="stat"><span class="num">8</span><span class="label">ainda bloqueados</span></div>
+      <div class="stat"><span class="num">3</span><span class="label">memórias novas</span></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>O que foi implementado nesta sessão</h2>
+      <span class="section-note">itens 01, 02, 03, 11, 12, 13</span>
+    </div>
+
+    <div class="cards">
+
+      <div class="card">
+        <span class="idx">01</span>
+        <div class="body">
+          <div class="title-row">
+            <h3>Recorte on-chart no Modo 2</h3>
+            <span class="chip done">concluído</span>
+          </div>
+          <p>A previsão causal a k semanas agora reporta duas leituras por célula (regime × horizonte): leitura completa e leitura on-chart — a principal, porque ~95% dos alvos do Modo 2 sem recorte são semanas fora do chart, no piso.</p>
+          <div class="detail"><b>Onde:</b> <code>_mode2_stats</code> em <code>run_phase3.py</code> — contagem de origens sobreviventes ao recorte registrada por célula; leitura sem recorte reproduz os números anteriores.</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <span class="idx">02</span>
+        <div class="body">
+          <div class="title-row">
+            <h3>Regime de split parametrizado</h3>
+            <span class="chip done">concluído</span>
+          </div>
+          <p>Prefactor para o segundo split (inteiramente pré-pandemia, ADR 0005). Os limites de treino/val/teste deixam de estar fixos no código.</p>
+          <div class="detail"><b>Onde:</b> <code>SplitRegime</code> / <code>SPLIT_REGIMES</code> em <code>dataset.py</code> (<code>current</code>, <code>pre_pandemia</code>) + <code>--split-regime</code> nos três scripts de fase. O regime usado fica gravado em <code>summary.md</code> e nos parquets de resultado.</div>
+          <p class="finding">Ainda não rodado: nenhum treino sob <code>pre_pandemia</code> foi executado — só o encanamento existe.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <span class="idx">03</span>
+        <div class="body">
+          <div class="title-row">
+            <h3>Estatística correta</h3>
+            <span class="chip done">concluído</span>
+          </div>
+          <p>O teste pareado do Modo 2 comparava GNN e SIR por origem de previsão (~23 mil pares), não por música (~1,9 mil) — inflava a significância. Passa a agregar por música antes do teste, com correção de Holm entre as células comparadas.</p>
+          <div class="detail"><b>Onde:</b> <code>paired_by_song</code>, <code>holm_correction</code>, <code>aggregate_seeds</code> em <code>evaluation/stats.py</code>. Teste de recomputação contra os resultados reais confirma a taxa de vitória da GNN já conhecida (64%–77%).</div>
+          <p class="finding">Revisão de código pegou um bug real na correção de Holm (NaN sendo silenciosamente substituído por outro p-valor) — corrigido e testado.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <span class="idx">11</span>
+        <div class="body">
+          <div class="title-row">
+            <h3>EDA da imputação por mediana</h3>
+            <span class="chip done">concluído</span>
+          </div>
+          <p>23,2% dos 6.526 nós de música do grafo (1.516 músicas) não têm nenhum atributo acústico — não NaN pontual, ausência total. A ausência não é aleatória: essas músicas têm mediana de 7 dias em chart contra 22 das completas (p ≈ 1×10⁻¹⁰²), concentrada em estreias de 2017–2018.</p>
+          <div class="detail"><b>Conclusão:</b> a imputação por valor central único não se sustenta sem ressalva. Alternativa proposta: imputação condicionada a faixa de popularidade, mantendo o indicador de ausência.</div>
+          <p class="finding">Achado colateral: o código chama a imputação de "mediana", mas na verdade imputa a média (z-score 0.0). Comentário do código corrigido; texto da dissertação ainda não.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <span class="idx">12</span>
+        <div class="body">
+          <div class="title-row">
+            <h3>Glossário aplicado ao texto</h3>
+            <span class="chip done">concluído</span>
+          </div>
+          <p>Resumo e abstract reescritos para abrir com a hipótese, não com a lista do que foi executado. Termos da coluna "evitar" do glossário removidos: "ecossistema de dados do MGD+" → "dataset MGD+", "rankings diários" → "charts diários". "Baseline populacional" agora é definido antes de usado.</p>
+          <div class="detail"><b>Onde:</b> <code>resumo.tex</code>, <code>abstract.tex</code>, <code>4-metodologia/texto.tex</code>. A descrição do teste do Modo 2 agora diz "pareado por música" — e passou a corresponder ao código de fato (item 03).</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <span class="idx">13</span>
+        <div class="body">
+          <div class="title-row">
+            <h3>Introdução: dataset e limitações</h3>
+            <span class="chip done">concluído</span>
+          </div>
+          <p>A introdução ganhou um parágrafo apresentando origem e recorte do dataset (MGD+ + charts BR, subconjunto viral∩hit de 1.981 músicas), seguido das três limitações com números reais.</p>
+          <div class="detail"><b>As três:</b> 62% das músicas aparecem em um único ano civil (mediana de 4 semanas em chart) · ~95% dos alvos do Modo 2 são semanas fora do chart · o teste é inteiramente pandemia enquanto o treino é quase todo anterior a ela.</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>Mapa completo do marco</h2>
+      <span class="section-note">15 itens · dependências entre parênteses</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>#</th><th>Item</th><th>Bloqueado por</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr class="is-done"><td class="idx">01</td><td>Recorte on-chart no Modo 2</td><td class="dep">—</td><td class="status"><span class="chip done">concluído</span></td></tr>
+          <tr class="is-done"><td class="idx">02</td><td>Regime de split parametrizado</td><td class="dep">—</td><td class="status"><span class="chip done">concluído</span></td></tr>
+          <tr class="is-done"><td class="idx">03</td><td>Estatística correta</td><td class="dep">—</td><td class="status"><span class="chip done">concluído</span></td></tr>
+          <tr><td class="idx">04</td><td>Diagnóstico da saturação da ablação</td><td class="dep">01 ✓</td><td class="status"><span class="chip ready">desbloqueado</span></td></tr>
+          <tr><td class="idx">05</td><td>Atributos estruturais de gênero e grafo reconstruído</td><td class="dep">04</td><td class="status"><span class="chip blocked">bloqueado</span></td></tr>
+          <tr><td class="idx">06</td><td>MusicDiffusionGNN re-treinada na nova matriz</td><td class="dep">02 ✓, 03 ✓, 05</td><td class="status"><span class="chip blocked">bloqueado</span></td></tr>
+          <tr><td class="idx">07</td><td>Baseline neural sem grafo</td><td class="dep">02 ✓, 03 ✓, 04</td><td class="status"><span class="chip blocked">bloqueado</span></td></tr>
+          <tr><td class="idx">08</td><td>GNN sobre grafo embaralhado</td><td class="dep">05, 06</td><td class="status"><span class="chip blocked">bloqueado</span></td></tr>
+          <tr><td class="idx">09</td><td>Ablação por tipo de aresta sobre a GNN final</td><td class="dep">06</td><td class="status"><span class="chip blocked">bloqueado</span></td></tr>
+          <tr><td class="idx">10</td><td>Comparação única consolidada</td><td class="dep">06, 07, 08, 09</td><td class="status"><span class="chip blocked">bloqueado</span></td></tr>
+          <tr class="is-done"><td class="idx">11</td><td>EDA da imputação por mediana</td><td class="dep">—</td><td class="status"><span class="chip done">concluído</span></td></tr>
+          <tr class="is-done"><td class="idx">12</td><td>Glossário aplicado ao texto</td><td class="dep">—</td><td class="status"><span class="chip done">concluído</span></td></tr>
+          <tr class="is-done"><td class="idx">13</td><td>Introdução: dataset e limitações</td><td class="dep">—</td><td class="status"><span class="chip done">concluído</span></td></tr>
+          <tr><td class="idx">14</td><td>Metodologia: SIR justo, fluxograma e seção 4.7</td><td class="dep">05</td><td class="status"><span class="chip blocked">bloqueado</span></td></tr>
+          <tr><td class="idx">15</td><td>Arquitetura com atenção (extensão)</td><td class="dep">10</td><td class="status"><span class="chip blocked">bloqueado</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <span>Fontes: .scratch/next-milestone/issues/ · docs/adr/0001–0005 · CONTEXT.md</span>
+    <span>Próxima sessão útil: item 04 (único desbloqueado)</span>
+  </footer>
+
+</main>

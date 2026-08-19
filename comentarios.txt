@@ -1,0 +1,43 @@
+
+
+[Apresentação]
+- Boa intro e contextualização, seguro 
+- Poderia ser mais dinâmica (menos detalhes)
+- foco no que foi feito, não na proposta
+- Legal o fluxograma (pg 23), mas deveria ser a proposta inteira.
+- não entendi a explicação do genero. É multiclasse? tabela de  32x~500 não está no texto
+
+
+
+[Geral]
+- ótimo tema, metodologia e apresentação
+- escrevi ao ler o texto: "Em geral a leitura está muito fluida. Uma das raras vezes que li um texto técnico sem me cansar/entediar."
+- qualidade do abstract não está no nível do texto
+  - deveria falar da sua hipótese geral, não focar no que foi feito
+  - uso de termos mal definidos ("baseline populacional", MusicDiffusionGNN, "ecossistema de dados do MGD+", "ambos os baselines" != 1 baseline 2 regimes)
+  
+  
+[Intro]
+- Objetivo está focano no que foi feito, não na proposta (não agrega GRU simples, por exemplo). Parte da interpretabilidade confusa.
+- Não explica o dataset (o dataset é importante porque ele tem limitações que impactam seriamente sua proposta)
+
+
+[Metodologia]
+- SIR são "modelos ajustados apenas sobre curvas agregadas" -> não é bem isso. Os pesquisadores da área fazem modelos muito mais complexos do que o básico que você usou.
+- "os gêneros, por não terem atributos próprios no dataset, são representados por embeddings aprendidos pelo próprio modelo durante o treinamento" então não são atributos relacionais: são espectrais, associativos, combinações lineares...
+- onde estão as relações de has_genre e cotrajectory nas definições? (na 4.7 não está claro)
+  -  "Os artistas são descritos por uma única dimensão: o número de gêneros associados." como isso é derivado dos embeddings?
+  - por que não tem a fórmula dos embeddings de gênero na seção 4.7?
+- ajudaria ter um fluxograma do processamento dos dados, para fica mais claro quais modelos usam quais dados  
+- "Músicas sem atributos acústicos completos não são removidas do universo. Em vez disso, os valores ausentes são imputados com a mediana e acompanhados por um indicador binário de ausência acústica." Fez EDA? Tem análises para dar suporte?
+- Seção 4.7: precisa separar melhor o que é da sua proposta e o que é fundamento. Na metodologia só deveria explicar coisas da sua proposta.
+- como cotrajectory é inferida a partir do banco de embeddings?
+- como o período da pandemia pode afetar os resultados? não dava para usar outro período?
+
+
+[Resultados]
+- 5.2 "A construção foi acompanhada de um conjunto de validações automatizadas.." a metologia de validação segue alguma referência? Se sim, citar.
+- Os resultados estão na linha do esperado?
+- usar um modelo com atenção poderia melhorar a captura de nuances?
+- Eu esperaria que uma variação de RNN/transformer bem projetada tenha resultados equivalentes ao GNN. Concorda? Por quê? Isso é um problema com sua metodologia?
+

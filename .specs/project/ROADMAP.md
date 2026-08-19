@@ -1,130 +1,111 @@
-# ROADMAP — 10 semanas até BraSNAM 2026
+# ROADMAP — da qualificação à defesa
 
-Janela operacional: **2026-05-02 → 2026-07-11**.
-Cada fase abaixo vira uma feature em `.specs/features/<slug>/` quando entrar em planejamento.
+Janela operacional: **2026-08 → 2027-01**. Qualificação aprovada em ago/2026.
+O cronograma abaixo é o que consta no capítulo `6-cronograma` do documento de
+qualificação, refinado pelas decisões de 2026-08-18 (ver `docs/adr/`).
 
-## Visão geral
+Resumo de uma página: [`ROADMAP.md`](../../ROADMAP.md).
+Glossário dos termos usados aqui: [`CONTEXT.md`](../../CONTEXT.md).
 
-```
-W1───W2───W3───W4───W5───W6───W7───W8───W9───W10
-[ Phase 0 ]
-       [ Phase 1 ]
-            [    Phase 2    ]
-                            [ Phase 3 ]
-                                        [ Phase 4 ]
-```
+## Concluído (marco anterior)
 
-## Phase 0 — Reprodução dos baselines (semanas 1–2)
+| Fase | Entrega | Data |
+|---|---|---|
+| Phase 0 | Reprodução do baseline SIR (5/5 critérios) | 2026-05-12 |
+| Phase 1 | Grafo heterogêneo música–artista–gênero, 6.526 / 1.701 / 530 nós | 2026-05-17 |
+| Phase 2 | MusicDiffusionGNN treinado, grid de 24 configs pós-correção de vazamento | 2026-06-28 |
+| Phase 3 | Avaliação dupla Modo 1 / Modo 2 contra SIR e persistência | 2026-07-07 |
 
-**Slug:** `phase-0-baselines`
-**Status:** ✅ completed (2026-05-12)
-**Bloqueia:** todas as fases seguintes (sem reprodução, comparação posterior é contaminada).
+Detalhe e números em [`STATE.md`](./STATE.md). Artefatos canônicos: `results/phase0/`,
+`results/phase1/`, `results/phase2_experimentos_v2/`, `results/phase3/`.
 
-**Resultados obtidos:**
-- SIR RMSE virality: **0,0289** (target ≈0,028 ± 10%) ✅
-- SIR RMSE success: **0,0471** (target ≈0,052 ± 10%) ✅
-- Mann-Whitney p-value: **1,61e-39** ✅
-- Subset: **1.981 músicas** (paper: 1.977; δ de 4 por diferença de período) ✅
-- Convergência SIR: **100%** ✅
-- Wave-based: **descartado** por decisão do pesquisador (ver STATE.md 2026-05-12)
+## Marco atual: a estrutura relacional agrega?
 
-Artefatos em `results/phase0/`: `summary.md`, `sir_params.parquet`, `boxplot_fig3.png`.
+A tese continua sendo o modelo proposto, mas passa a ser testável: a rodada abaixo
+pode falseá-la, e o que a dissertação passa a dizer em cada desfecho já está
+registrado em [ADR-0001](../../docs/adr/0001-precompromisso-de-falseamento.md).
 
-## Phase 1 — Construção do grafo heterogêneo (semanas 2–3)
+### Phase 4 — Diagnóstico do instrumento de ablação (ago)
 
-**Slug:** `phase-1-hetero-graph`
-**Status:** specifying (2026-05-17)
-**Depende de:** Phase 0 (mesmas séries pré-processadas).
+**Bloqueia todas as fases seguintes.** A ablação por tipo de aresta rodada em
+2026-07-07 devolveu variação de erro **exatamente zero** para os cinco tipos de
+aresta e para os três grupos de features (`results/phase3/interpretability.parquet`).
+Hipótese: como a predição é `clamp(y_prev + Δ, 0, 0,5)` e o grafo entra só por `Δ`,
+nas semanas de piso (`y_prev = 0`) qualquer `Δ` negativo é anulado pelo `clamp`;
+com ~95% do conjunto de avaliação nessas semanas, o instrumento satura.
 
-**Schema de nós:** Música (6.469), Artista (1.701), Gênero (530).
-**Tipos de aresta:** artista→música (interpreta), artista—gênero (pertence_a),
-música→música (co-trajetória, ≥7 dias juntos no chart), gênero—gênero (co-ocorrência MGD+).
-**Temporal:** snapshots semanais.
+- Verificar se as predições mudam com e sem grafo, fora do `clamp`, no checkpoint atual.
+- Medir quanto da predição vem de `y_prev` e quanto vem de `Δ`, separadamente.
+- Repetir a ablação sob recorte on-chart.
+- Desfecho A (satura pelo `clamp`): o recorte on-chart resolve, segue o plano.
+- Desfecho B (o grafo não influencia a predição em nenhum recorte): o ganho da GNN
+  sobre o SIR vem do ancoramento à persistência, e isso muda a leitura da Phase 3.
 
-**Ferramentas:** `networkx` para análise; `torch_geometric.data.HeteroData` para treino.
+### Phase 5 — Nova representação de gênero e reconstrução do grafo (ago–set)
 
-**Saída:** estatísticas exploratórias (distribuição de grau por tipo, componentes,
-clustering, comunidades por gênero) + objeto `HeteroData` serializado.
+Substituir a tabela de 530×32 parâmetros livres por atributos derivados da rede
+gênero↔gênero, restritos aos anos de treino ([ADR-0003](../../docs/adr/0003-atributos-de-genero-derivados.md)).
+Remover o `x_genre` aleatório, hoje código morto. Reconstruir o grafo e revalidar C1–C9.
 
-## Phase 2 — Modelagem com Temporal GNN heterogêneo (semanas 3–6)
+### Phase 6 — Escada de comparação (set–out)
 
-**Slug:** `phase-2-temporal-gnn`
-**Status:** ✅ completed (R1, 2026-06-28) — v1 perdia p/ persistência; R1 (popularidade defasada
-como feature de nó + cabeça residual) **bate persistência nas 24 configs** (grid v2, Colab T4).
-Melhor: W12_h128_l3_lr5e-04, val_mse combinado 0.000749. Artefatos em `results/phase2_experimentos_v2/`.
-**Depende de:** Phase 1.
+Cinco modelos sob o mesmo protocolo, mesmas features e mesmo eixo semanal:
 
-**Arquitetura base:**
-```
-[snapshot semana t] → HeteroGraphSAGE (2 camadas, hidden=128)
-                    → embedding por música em t (128-d)
-[seq embeddings t-W..t-1] → GRU (hidden=128, 1 camada)
-                          → MLP → rank_score(t) ∈ [0, 0.5]
-```
-~200K parâmetros. Treina em CPU/laptop em horas.
-
-**Splits temporais:**
-- Treino: 2017-01 → 2020-06 (3,5 anos).
-- Validação: 2020-07 → 2020-12.
-- Teste: 2021-01 → 2021-12.
-
-**Grid pequeno:** W ∈ {4, 8, 12}, hidden ∈ {64, 128}, layers ∈ {2, 3}, lr ∈ {1e-3, 5e-4}.
-
-**Plano B (se base não funcionar):** HGT no lugar de HeteroSAGE; Transformer no
-lugar de GRU; TGN puro.
-
-## Phase 3 — Avaliação dupla (semanas 6–8)
-
-**Slug:** `phase-3-evaluation`
-**Status:** designed (2026-06-28) — spec + context + design escritos. OQ1–OQ6 resolvidas:
-Modo 1 = **rollout livre global** (`seed_weeks=W`, encode 1×/semana); checkpoint = **`grid_best_model.pt`**
-(W12; `best_model.pt` é a W4 fraca); SIR causal refit `≤w` no test span; **Wilcoxon** pareado +
-bootstrap IC95%; **hit longo = >90d `rank_score>0`** (viral50 4%, top200 40%); CRPS deferido.
-⚠️ SIR e `subset_ids.json` **não estão em disco** (`results/` gitignored) → R0 regenera via `run_phase0.py`.
-**Depende de:** Phase 2 (melhor config W12_h128_l3, `results/phase2_experimentos_v2/`) e Phase 0 (SIR a regenerar).
-
-**Modo 1 — Fit retroativo:** comparação 1-pra-1 com Tabela/Fig. 3 do paper, em granularidade
-**semanal**. Métricas: RMSE médio ± IC 95% (bootstrap), boxplot (Fig. 3), Wilcoxon pareado
-(+ Mann-Whitney p/ alinhar paper) vs SIR. GNN = **rollout livre** (justiça vs teacher forcing, OQ1).
-
-**Modo 2 — Predição genuína (extensão original):** `y_week(w+k)` usando dados ≤ w, via rollout
-recursivo. Refazer SIR causal no mesmo regime. Métricas: RMSE em **k ∈ {1, 2, 4} semanas**,
-acerto direcional; score-CRPS deferido (P3).
-
-**Análise qualitativa:** replicar Figs. 8 e 9 do paper com casos "Shallow",
-"Batom de Cereja", "Água Nos Zói", "abcdefu".
-
-**Análise interpretativa:** atenção por tipo de aresta, importância de features
-acústicas vs metadados, análogos populacionais (β, γ, R₀) extraídos do GNN.
-
-## Phase 4 — Escrita e submissão (semanas 8–10)
-
-**Slug:** `phase-4-paper`
-**Status:** pending
-**Depende de:** Phase 3 (todos os números finais).
-
-**Estrutura SBC (8–12 páginas):** Intro · Trabalhos relacionados · Dados ·
-Metodologia · Avaliação · Discussão · Conclusão.
-
-**Citações imprescindíveis (não estavam no plano anterior):**
-Wave-based ASONAM 2025; Causalidade IEEE Access 2025; WebSci 2024 (viral songs);
-HGT (Hu 2020); TGN (Rossi 2020).
-
-## Riscos cross-fase
-
-| Risco | Onde mitiga |
+| Modelo | O que isola |
 |---|---|
-| Overfitting do GNN (1.179 músicas) | Phase 2: dropout + weight decay + early stopping + subsampling de arestas |
-| Vazamento via co-trajetória | Phase 1: aresta só conta com data ≤ t; Phase 3: validar splits |
-| Wave-based difícil de reproduzir | Phase 0: contatar autor; fallback mistura de Gaussianas |
-| GNN não bate wave-based | Phase 3 + Phase 4: reposicionar como "resultado limitado" |
-| Features acústicas dominarem o sinal estrutural | Phase 3: ablation com/sem acústicas |
-| Diferença de 2,5 meses no período | Phase 4: declarar como limitação |
+| Persistência | piso trivial do problema |
+| SIR (baseline populacional) | o estado da arte replicado |
+| Baseline neural sem grafo | capacidade neural sem estrutura |
+| GNN sobre grafo embaralhado | estrutura destruída, resto constante ([ADR-0002](../../docs/adr/0002-grafo-embaralhado-como-controle.md)) |
+| MusicDiffusionGNN | a proposta |
 
-## Status atual
+Mais ablação por tipo de aresta sobre a GNN completa, em tempo de avaliação, sem re-treino.
 
-- ✅ **Phase 0 concluída** (2026-05-12) — todos os critérios de aceitação passaram.
-- Repo limpo: `scripts/exploratory/` para diagnósticos; `scripts/run_phase0.py` único entry point.
-- **Próximo passo:** design da Phase 1 via `/tlc-spec-driven design phase-1-hetero-graph`
-  (resolver 5 open questions: features de gênero, arestas paralelas vs união, imputação acústica,
-  direção `has_genre`, embedding inicial de gênero).
+**Matriz:** 3 modelos neurais × 2 splits × 3 seeds = **18 treinos**, mais SIR e
+persistência refeitos nos dois splits. Avaliação em 2 recortes (completo e on-chart,
+[ADR-0004](../../docs/adr/0004-recorte-on-chart-como-leitura-principal.md)) × 3
+horizontes × 2 regimes. Segundo split inteiramente pré-pandemia
+([ADR-0005](../../docs/adr/0005-segundo-split-pre-pandemia.md)).
+
+**Estatística:** média e desvio entre seeds, IC bootstrap sobre a **diferença** de
+RMSE entre modelos, Wilcoxon reagregando os erros **por música** antes do teste (o
+código atual pareia por origem de previsão, o que infla a significância), correção
+de Holm entre as células.
+
+### Phase 7 — Arquitetura alternativa com atenção (out–nov)
+
+HGT ou GAT por relação no lugar do HeteroGraphSAGE, cabeça temporal e protocolo
+fixos. Verifica se a vantagem é robusta à arquitetura e fornece pesos de atenção
+por tipo de aresta. Previsto no cronograma aprovado; é extensão, não pré-requisito.
+
+### Phase 8 — Redação e defesa (dez–jan)
+
+Consolidação da comparação única, discussão, conclusão, defesa e submissão.
+
+## Pendências de texto (em paralelo, não dependem de números novos)
+
+Do `comentarios.txt` da banca:
+
+- Glossário aplicado ao resumo e à metodologia (termos mal definidos). Base: `CONTEXT.md`.
+- Intro: explicar o dataset e as limitações que ele impõe à proposta.
+- Metodologia: corrigir a caracterização do SIR (a literatura da área usa modelos
+  bem mais complexos que o SIR básico replicado aqui), com referências.
+- Metodologia: fluxograma do processamento dos dados, deixando claro qual modelo usa quais dados.
+- Metodologia: EDA que sustente a imputação por mediana dos atributos acústicos.
+- Seção 4.7: separar o que é proposta do que é fundamento; incluir a fórmula da
+  co-trajetória e das novas features de gênero.
+- Resultados: citar a referência do protocolo de validação automatizada, se houver.
+- `PLANO.md`: rebaixar a promessa de atenção por tipo de aresta, hoje escrita como
+  entrega e na verdade prevista para a Phase 7.
+
+Dependem dos números novos, ficam para depois: resumo, objetivos da introdução,
+capítulo de resultados e discussão.
+
+## Riscos
+
+| Risco | Mitigação |
+|---|---|
+| O grafo não influencia a predição (desfecho B da Phase 4) | ADR-0001 já define o que a tese passa a dizer |
+| 18 treinos dependem do Colab, que desconecta | Retomada por config já implementada; checkpoints no Drive |
+| Novas features de gênero piorarem o resultado | É resultado reportável; a alternativa anterior não era defensável |
+| Split pré-pandemia inverter a ordenação dos modelos | É exatamente o que a checagem existe para detectar |

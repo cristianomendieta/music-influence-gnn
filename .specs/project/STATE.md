@@ -251,6 +251,35 @@
 - [x] Executar `/tlc-spec-driven tasks phase-3-evaluation` (12 tasks atômicas em 5 waves). 2026-06-28.
 - [ ] Executar `/tlc-spec-driven implement phase-3-evaluation` (rodar T1 → T12).
 
+## Consolidação documental e novo marco (2026-08-18)
+
+Qualificação aprovada. Sessão de grilling definiu o marco "a estrutura relacional
+agrega?" — decisões em `docs/adr/0001` a `0005`, plano em `ROADMAP.md`, vocabulário
+em `CONTEXT.md` (raiz do repo).
+
+**Documentos removidos por duplicidade:** `STATUS.md` (parado na Phase 0/1) e
+`EXPERIMENTS.md` (só Phase 0, e com RMSE 0,0381/0,0699 que contradiziam os
+0,0289/0,0471 de `results/phase0/summary.md`, os canônicos). Também removido
+`documento_qualificao.zip`, duplicata da pasta `documento_qualificao/`.
+
+**Fontes de verdade a partir daqui:** `README.md` (entrada), `.specs/project/STATE.md`
+(estado), `.specs/project/ROADMAP.md` (plano), `CONTEXT.md` (glossário), `docs/adr/`
+(decisões), `PLANO.md` (visão de pesquisa e posicionamento na literatura).
+
+**Faxina em `results/`.** Havia quatro pastas de Phase 3 sobrepostas. A canônica é a
+de 2026-07-07, que tem a rodada completa (1.955 músicas) **e** a interpretabilidade;
+foi renomeada para `results/phase3/`. Removidas: a antiga `phase3` (07-04, sem
+interpretabilidade), `phase3_resultados` (smoke de 5 músicas) e as pastas de Phase 2
+anteriores à correção de vazamento de 2026-06-14 (`phase2/`, `phase2_experimentos/`).
+Mantida `results/phase2_experimentos_v2/`, que tem o checkpoint em uso.
+
+**Achado P0 aberto.** A interpretabilidade C9–C11 **não** estava pendente: rodou em
+2026-07-07 e devolveu `delta_rmse` exatamente zero para os cinco tipos de aresta e
+para os três grupos de features. Ver Phase 4 do ROADMAP e ADR-0004. É o bloqueador
+de maior prioridade: ou o instrumento satura no `clamp`, ou o grafo não influencia a
+predição.
+
+
 ## Deferred ideas
 
 - **Causalidade virality↔success** (Oliveira IEEE Access 2025): explorar como

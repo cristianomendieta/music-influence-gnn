@@ -1,62 +1,75 @@
-# Music Diffusion GNN — Replicação + Extensão (BraSNAM 2026)
+# Music Influence GNN — difusão de popularidade musical em grafo temporal heterogêneo
 
-Replicação de Oliveira et al. 2025 (BraSNAM) e extensão para Temporal GNN heterogêneo
-sobre o grafo artista–música–gênero da cena musical brasileira no Spotify.
+Dissertação de mestrado. Replica Oliveira et al. (BraSNAM 2025), que modela
+popularidade musical como epidemia via SIR, e estende o problema para aprendizado
+sobre o grafo heterogêneo música–artista–gênero da cena brasileira no Spotify.
 
-**Status atual:** Phase 0 (baseline SIR) concluída ✅ — ver [STATUS.md](STATUS.md).
-**Planejamento:** [.specs/](.specs/) | **Visão de pesquisa:** [PLANO.md](PLANO.md).
+**Pergunta do marco atual:** sinais relacionais capturam variância da popularidade
+que os modelos populacionais deixam de fora, ou o ganho observado vem só da
+flexibilidade de um modelo neural?
+
+**Qualificação aprovada em ago/2026.** Defesa prevista para jan/2027.
+
+## Por onde começar
+
+| Documento | O que é |
+|---|---|
+| [CONTEXT.md](CONTEXT.md) | Glossário. A linguagem do projeto, e só isso |
+| [ROADMAP.md](ROADMAP.md) | Resumo de uma página: a pergunta do marco, as decisões e as fases |
+| [.specs/project/ROADMAP.md](.specs/project/ROADMAP.md) | O plano detalhado, fase a fase, com a matriz experimental |
+| [.specs/project/STATE.md](.specs/project/STATE.md) | Estado, decisões e pendências ao longo do tempo |
+| [docs/adr/](docs/adr/) | Decisões difíceis de reverter, com o porquê |
+| [PLANO.md](PLANO.md) | Visão de pesquisa e posicionamento na literatura |
+| [documento_qualificao/](documento_qualificao/) | Fonte LaTeX da dissertação |
+
+## Onde o trabalho está
+
+Fases 0 a 3 concluídas: baseline SIR reproduzido, grafo construído e validado,
+MusicDiffusionGNN treinado, avaliação dupla contra SIR e persistência. Os números
+estão em `results/` e no capítulo de resultados.
+
+O marco atual submete a tese a teste. Entram na comparação um baseline neural sem
+grafo, a mesma GNN sobre um grafo com arestas embaralhadas, um segundo split
+pré-pandemia, três seeds por modelo e o recorte on-chart como leitura principal.
+Antes disso há um bloqueador: a ablação por tipo de aresta devolveu variação de erro
+exatamente zero, e é preciso saber se o instrumento saturou ou se o grafo realmente
+não influencia a predição.
 
 ## Estrutura
 
 ```
-data/                 # Datasets (MGD+ charts + features) — gitignored
-  charts/mgdplus/     #   Top 200 + Viral 50 BR diários, 2017–2022 (completo)
-  songs/              #   Features acústicas + metadata por ano
-  artists/            #   Artistas + listas de gêneros
-  genre_network/      #   Rede gênero↔gênero pré-construída
-  MGDplus/            #   Dataset MGD+ completo (68 mercados) — preservado
+src/music_diffusion_gnn/
+  data/         loaders e pré-processamento (posição no chart → média móvel → normalização)
+  baselines/    SIR clássico
+  graph/        construção do HeteroData
+  models/       encoder heterogêneo, cabeça temporal, persistência
+  training/     dataset, splits temporais, trainer
+  evaluation/   métricas, rollout, estatística, interpretabilidade, figuras
 
-src/music_diffusion_gnn/   # Código importável (pip install -e .)
-  data/               #   loaders, pré-processamento (rank score → MA-7d → min-max)
-  baselines/          #   sir.py (baseline SIR, Phase 0 ✅)
-  graph/              #   construção do HeteroData PyG (Phase 1, stub)
-  models/             #   HeteroSAGE + GRU (Phase 2, stub)
-  training/           #   Lightning module, splits temporais (Phase 2, stub)
-  evaluation/         #   métricas, Mann-Whitney, plots
-
-scripts/
-  run_phase0.py             # Pipeline Phase 0 — entry point principal
-  exploratory/              # Diagnósticos e validação de dados (não fazem parte do pipeline)
-    verify_data.py
-    inspect_mgdplus.py
-
-exploration/          # Notebooks EDA pré-Phase 1 (00_overview → 06_gnn_design_sketch)
-notebooks/            # Figuras e análises (fases futuras)
-results/              # Artefatos gerados (gitignored; Phase 0 em results/phase0/)
-references/           # PDFs dos papers citados
+scripts/        run_phase0.py … run_phase3.py (entry points por fase)
+notebooks/      pipelines de treino e avaliação rodados no Colab
+exploration/    EDA anterior à construção do grafo
+tests/          suíte pytest, incluindo testes de vazamento temporal
+data/           gitignored, exceto os três artefatos processados que o Colab clona
+results/        gitignored; phase0, phase1, phase2_experimentos_v2, phase3
 ```
 
 ## Setup
 
 ```bash
 pip install -e .[dev]
-```
-
-Phase 0 já foi executada. Para reproduzir (idempotente — usa cache se disponível):
-
-```bash
-python scripts/run_phase0.py
-```
-
-Saída em `results/phase0/`: `summary.md` (5/5 critérios ✅), `sir_params.parquet`, `boxplot_fig3.png`.
-
-Para rodar os testes:
-
-```bash
 pytest tests/ -v
 ```
 
-## Citações obrigatórias no paper final
+O treino roda no Google Colab com GPU, não localmente: a máquina de
+desenvolvimento é CPU-only. Os notebooks persistem checkpoints no Drive e retomam
+a grid de onde parou em caso de desconexão.
 
-- **Features e gêneros**: Seufitelli, D. B.; Oliveira, G. P.; Silva, M. O.; Moro, M. M. *MGD+: An Enhanced Music Genre Dataset with Success-based Networks.* DSW 2023.
-- **Paper original (replicação)**: Oliveira, G. P.; Vassio, L.; Couto da Silva, A. P.; Moro, M. M. *Modeling music popularity as an epidemic.* BraSNAM 2025.
+## Citações obrigatórias
+
+- **Paper replicado:** Oliveira, G. P.; Vassio, L.; Couto da Silva, A. P.; Moro, M. M.
+  *Modeling music popularity as an epidemic: insights from the Brazilian market.* BraSNAM 2025.
+- **Dataset:** Seufitelli, D. B.; Oliveira, G. P.; Silva, M. O.; Moro, M. M.
+  *MGD+: An Enhanced Music Genre Dataset with Success-based Networks.* DSW 2023.
+- **Follow-up dos mesmos autores:** Oliveira, G. P. et al. *Contagious Rhythms: A Wave-Based
+  Epidemic Approach for Music Virality on Social Platforms.* ASONAM 2025.
