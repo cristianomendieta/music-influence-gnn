@@ -49,7 +49,7 @@ def _check(criterion: str, ok: bool, detail: str = "") -> bool:
     return ok
 
 
-def main(seed: int = 42, smoke: bool = False) -> int:
+def main(seed: int = 42, smoke: bool = False, split_regime: str = "current") -> int:
     import numpy as np
     import pandas as pd
     import torch
@@ -87,7 +87,7 @@ def main(seed: int = 42, smoke: bool = False) -> int:
     t0 = time.time()
     ts_df = pd.read_parquet(PROCESSED / "timeseries.parquet")
     weekly_df = aggregate_weekly(ts_df)
-    splits_df = temporal_split(weekly_df)
+    splits_df = temporal_split(weekly_df, regime=split_regime)
     # R1 (2026-06-23): lagged-popularity bank for node-feature injection + residual head.
     pop_bank = build_pop_bank(weekly_df, PROCESSED_GRAPH / "node_id_map.json",
                               n_music=g["music"].num_nodes)
@@ -302,6 +302,7 @@ def main(seed: int = 42, smoke: bool = False) -> int:
     # C9: summary.md written
     summary_lines = [
         "# Phase 2 — Summary\n\n",
+        f"**Split regime:** `{split_regime}`\n",
         f"**Best config:** `{best_cfg}`\n",
         f"**Params:** {n_params:,}\n\n",
         "## Forecasting (val, held-out)\n\n",
@@ -356,5 +357,8 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=42, help="random seed")
     parser.add_argument("--smoke", action="store_true",
                         help="fast smoke run: 1 config, tiny dataset")
+    parser.add_argument("--split-regime", default="current",
+                        choices=["current", "pre_pandemia"],
+                        help="named train/val/test boundary regime (default: current)")
     args = parser.parse_args()
-    sys.exit(main(seed=args.seed, smoke=args.smoke))
+    sys.exit(main(seed=args.seed, smoke=args.smoke, split_regime=args.split_regime))

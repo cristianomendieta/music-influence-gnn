@@ -15,7 +15,7 @@ O desenho experimental segue três etapas. Primeiro, reproduz-se o baseline SIR 
 
 \section{Fontes de dados}
 
-A base principal é o MGD+, que fornece metadados musicais e atributos acústicos associados a músicas e artistas \citep{seufitelli2023dsw}. Esses dados são combinados a séries de charts brasileiros do Spotify, em particular rankings diários de Top 200 e Viral 50. O Top 200 é usado como aproximação de sucesso ou popularidade consolidada, enquanto o Viral 50 representa sinais de crescimento e circulação viral.
+A base principal é o MGD+, que fornece metadados musicais e atributos acústicos associados a músicas e artistas \citep{seufitelli2023dsw}. Esses dados são combinados a séries de charts brasileiros do Spotify, em particular os charts diários Top 200 e Viral 50. O Top 200 é usado como aproximação de sucesso ou popularidade consolidada, enquanto o Viral 50 representa sinais de crescimento e circulação viral.
 
 O universo atual do estudo contém 6.526 músicas, 1.701 artistas e 530 gêneros. Esses elementos formam os três tipos de nós do grafo heterogêneo. As músicas carregam atributos acústicos, indicadores de popularidade e variáveis derivadas dos charts; os artistas carregam estatísticas agregadas de presença em charts e diversidade de gêneros; os gêneros, por não terem atributos próprios no dataset, são representados por embeddings aprendidos pelo próprio modelo durante o treinamento (Seção~\ref{sec:modelo-proposto}).
 
@@ -26,7 +26,7 @@ A cobertura temporal considerada vai de 2017 a 2021. Essa janela permite separar
 \section{Pré-processamento das séries musicais}
 \label{sec:preproc}
 
-O pré-processamento das séries segue a lógica do estudo SIR de referência para manter comparabilidade. Rankings diários são transformados em séries numéricas de \emph{rank-score}, separando a dimensão de viralidade, associada ao Viral 50, e a dimensão de sucesso, associada ao Top 200. Essa transformação converte posições de ranking em valores comparáveis entre músicas e datas. Para uma música em uma posição $rank$ de um chart com posição máxima $\textit{max\_rank}$ (200 no Top 200 e 50 no Viral 50), o \emph{rank-score} é definido por
+O pré-processamento das séries segue a lógica do estudo SIR de referência para manter comparabilidade. Os charts diários são transformados em séries numéricas de \emph{rank-score}, separando a dimensão de viralidade, associada ao Viral 50, e a dimensão de sucesso, associada ao Top 200. Essa transformação converte a posição no chart em valores comparáveis entre músicas e datas. Para uma música em uma posição $rank$ de um chart com posição máxima $\textit{max\_rank}$ (200 no Top 200 e 50 no Viral 50), o \emph{rank-score} é definido por
 
 \begin{equation}
 \label{eq:rank-score}

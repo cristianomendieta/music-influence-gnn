@@ -11,6 +11,8 @@ Flags:
     --seed-weeks N      Seed weeks for Mode-1 free rollout (default = W from ckpt).
     --origin-stride N   Week stride between Mode-2 origins (default 4).
     --device DEVICE     Torch device (default cpu).
+    --split-regime R    Train/val/test boundary regime: "current" or
+                        "pre_pandemia" (default "current").
 
 Produces under results/phase3/:
     R5.1  mode1_per_song.parquet
@@ -84,13 +86,18 @@ def _build_origins(
     ks: tuple[int, ...],
     origin_stride: int,
     smoke: bool,
+    split_regime: str = "current",
 ) -> pd.DataFrame:
-    """Build Mode-2 origin rows: (song_id, chart, week) in the test span."""
-    from music_diffusion_gnn.training.dataset import TEST_START_WEEK
+    """Build Mode-2 origin rows: (song_id, chart, week) in the regime's test span."""
+    from music_diffusion_gnn.training.dataset import get_split_regime
 
+    regime = get_split_regime(split_regime)
     max_k = max(ks)
+    test_end = regime.test_end_week if regime.test_end_week is not None else _MAX_WEEK
     test_wdf = weekly_df[
-        (weekly_df["week"] >= TEST_START_WEEK) & (weekly_df["week"] + max_k <= _MAX_WEEK)
+        (weekly_df["week"] >= regime.test_start_week)
+        & (weekly_df["week"] <= test_end)
+        & (weekly_df["week"] + max_k <= _MAX_WEEK)
     ]
     songs = test_wdf[["song_id", "chart"]].drop_duplicates()
     if smoke:
@@ -227,14 +234,28 @@ def _mode2_horizons(
 
 
 def _mode2_stats(
-    m2: pd.DataFrame, weekly_df: pd.DataFrame, seed: int
+    m2: pd.DataFrame,
+    weekly_df: pd.DataFrame,
+    seed: int,
+    onchart: set | None = None,
 ) -> dict:
-    """RMSE + directional accuracy per (model, k, chart); Wilcoxon + bootstrap."""
-    from music_diffusion_gnn.evaluation.stats import (
-        bootstrap_ci_diff,
-        directional_accuracy,
-        wilcoxon_signed_rank,
-    )
+    """RMSE + directional accuracy per (model, k, chart, reading); Wilcoxon + bootstrap.
+
+    Reports two readings per cell: ``"full"`` (every test-span origin, the
+    numbers already in use) and ``"onchart"`` (restricted to target weeks
+    where the song is actually charting — the principal reading per
+    docs/adr/0004, since ~95% of full-span Mode-2 targets sit at the floor).
+    ``onchart=None`` skips the on-chart reading (only ``"full"`` is produced),
+    matching the pre-recorte behavior.
+
+    The GNN-vs-SIR comparison aggregates per-origin squared errors to a
+    per-song mean before the paired Wilcoxon + bootstrap CI (docs.md #03):
+    origins from the same song are not independent, and pairing directly on
+    origins (~23k pairs) instead of songs (~1.9k) inflates significance.
+    p-values are Holm-corrected within each reading's family of 6 (chart × k)
+    comparisons.
+    """
+    from music_diffusion_gnn.evaluation.stats import directional_accuracy, holm_correction, paired_by_song
 
     y_origin_idx = weekly_df.set_index(["song_id", "chart", "week"])["y_week"]
 
@@ -244,40 +265,61 @@ def _mode2_stats(
 
     m2 = m2.copy()
     m2["y_origin"] = m2.apply(_y_origin, axis=1)
+    m2["target_week"] = m2["origin_week"] + m2["k"]
+    if onchart is not None:
+        m2["onchart"] = [
+            (sid, chart, int(w)) in onchart
+            for sid, chart, w in zip(m2["song_id"], m2["chart"], m2["target_week"])
+        ]
+    readings = ("full", "onchart") if onchart is not None else ("full",)
 
     stats: dict = {}
-    for chart in ("viral50", "top200"):
-        for k in sorted(m2["k"].unique()):
-            sub = m2[(m2["chart"] == chart) & (m2["k"] == k)]
-            for model in ("gnn", "sir", "persist"):
-                msub = sub[sub["model"] == model].dropna(subset=["y_true", "y_pred"])
-                if msub.empty:
-                    continue
-                rmse_val = float(np.sqrt(np.mean((msub["y_true"] - msub["y_pred"]) ** 2)))
-                da = directional_accuracy(
-                    msub["y_origin"].to_numpy(),
-                    msub["y_true"].to_numpy(),
-                    msub["y_pred"].to_numpy(),
-                )
-                stats[(model, k, chart)] = {"rmse": rmse_val, "dir_acc": da, "n": len(msub)}
+    wilcoxon_keys_by_reading: dict[str, list[tuple]] = {r: [] for r in readings}
+    for reading in readings:
+        m2r = m2 if reading == "full" else m2[m2["onchart"]]
+        for chart in ("viral50", "top200"):
+            for k in sorted(m2["k"].unique()):
+                sub = m2r[(m2r["chart"] == chart) & (m2r["k"] == k)]
+                for model in ("gnn", "sir", "persist"):
+                    msub = sub[sub["model"] == model].dropna(subset=["y_true", "y_pred"])
+                    if msub.empty:
+                        continue
+                    rmse_val = float(np.sqrt(np.mean((msub["y_true"] - msub["y_pred"]) ** 2)))
+                    da = directional_accuracy(
+                        msub["y_origin"].to_numpy(),
+                        msub["y_true"].to_numpy(),
+                        msub["y_pred"].to_numpy(),
+                    )
+                    stats[(model, k, chart, reading)] = {"rmse": rmse_val, "dir_acc": da, "n": len(msub)}
 
-            # Wilcoxon + bootstrap CI (GNN vs SIR, paired by origin)
-            gnn_sub = sub[(sub["model"] == "gnn")].dropna(subset=["y_true", "y_pred"])
-            sir_sub = sub[(sub["model"] == "sir") & (sub["converged"])].dropna(subset=["y_true", "y_pred"])
-            paired = gnn_sub.set_index(["song_id", "chart", "origin_week"]).join(
-                sir_sub.set_index(["song_id", "chart", "origin_week"]),
-                lsuffix="_gnn", rsuffix="_sir", how="inner",
-            )
-            if len(paired) >= 2:
-                rmse_gnn = (paired["y_true_gnn"] - paired["y_pred_gnn"]) ** 2
-                rmse_sir = (paired["y_true_sir"] - paired["y_pred_sir"]) ** 2
-                # per-origin squared errors as "per-song" proxy for Wilcoxon
-                try:
-                    w = wilcoxon_signed_rank(rmse_gnn.to_numpy(), rmse_sir.to_numpy())
-                except Exception:
-                    w = {"statistic": float("nan"), "p_value": float("nan"), "n": 0}
-                lo, hi, md = bootstrap_ci_diff(rmse_gnn.to_numpy(), rmse_sir.to_numpy(), seed=seed)
-                stats[("wilcoxon", k, chart)] = {**w, "ci_lo": lo, "ci_hi": hi, "mean_diff": md}
+                # GNN vs SIR: paired by song (not by origin) — see docstring.
+                gnn_sub = sub[(sub["model"] == "gnn")].dropna(subset=["y_true", "y_pred"])
+                sir_sub = sub[(sub["model"] == "sir") & (sub["converged"])].dropna(subset=["y_true", "y_pred"])
+                paired = gnn_sub.set_index(["song_id", "chart", "origin_week"]).join(
+                    sir_sub.set_index(["song_id", "chart", "origin_week"]),
+                    lsuffix="_gnn", rsuffix="_sir", how="inner",
+                )
+                if len(paired) >= 2:
+                    rmse_gnn = ((paired["y_true_gnn"] - paired["y_pred_gnn"]) ** 2).to_numpy()
+                    rmse_sir = ((paired["y_true_sir"] - paired["y_pred_sir"]) ** 2).to_numpy()
+                    song_ids = paired.index.get_level_values("song_id").to_numpy()
+                    try:
+                        w = paired_by_song(rmse_gnn, rmse_sir, song_ids, seed=seed)
+                    except Exception:
+                        w = {"statistic": float("nan"), "p_value": float("nan"), "n": 0,
+                             "ci_lo": float("nan"), "ci_hi": float("nan"), "mean_diff": float("nan"),
+                             "win_rate": float("nan"), "n_songs": 0}
+                    w["n_origins"] = len(paired)
+                    stats[("wilcoxon", k, chart, reading)] = w
+                    wilcoxon_keys_by_reading[reading].append((k, chart))
+
+        # Holm correction within this reading's family of comparisons.
+        keys = wilcoxon_keys_by_reading[reading]
+        if keys:
+            p_values = [stats[("wilcoxon", k, chart, reading)]["p_value"] for k, chart in keys]
+            adjusted = holm_correction(np.asarray(p_values))
+            for (k, chart), p_adj in zip(keys, adjusted):
+                stats[("wilcoxon", k, chart, reading)]["p_value_holm"] = float(p_adj)
 
     return stats
 
@@ -307,12 +349,15 @@ def _write_summary(
     out_path: Path,
     smoke: bool,
     n_sir_excl: int,
+    split_regime: str = "current",
 ) -> None:
     mode1_gnn = mode1[mode1["model"] == "gnn"]
     mode1_sir = mode1[mode1["model"] == "sir"]
 
     lines = [
         "# Phase 3 — GNN vs SIR Dual Evaluation",
+        "",
+        f"**Split regime:** `{split_regime}`",
         "",
         f"{'⚠️  SMOKE MODE — results from a tiny subset' if smoke else ''}",
         "",
@@ -328,30 +373,46 @@ def _write_summary(
         s_oc = mode1_sir[mode1_sir["chart"] == chart]["rmse_onchart"].mean()
         lines.append(f"| {label} | {g:.5f} | {s:.5f} | {g_oc:.5f} | {s_oc:.5f} |")
 
+    # Mode 2: on-chart is the principal reading (docs/adr/0004) — shown first;
+    # full-span (includes floor weeks, ~95% of targets) shown for reference.
+    readings = ["onchart", "full"] if any(k[-1] == "onchart" for k in m2_stats) else ["full"]
+    reading_label = {"onchart": "On-chart (principal)", "full": "Full span (reference)"}
+
     lines += ["", "## Mode 2 — Recursive Rollout (k-step Forecasting)", ""]
     lines += [f"SIR non-convergent/short-history exclusions: {n_sir_excl}", ""]
-    lines += ["| Model | k | Regime | RMSE | Dir. Acc. | n |",
-              "|-------|---|--------|------|-----------|---|"]
-    for model in ("gnn", "sir", "persist"):
+    for reading in readings:
+        lines += [f"### {reading_label[reading]}", ""]
+        lines += ["| Model | k | Regime | RMSE | Dir. Acc. | n |",
+                  "|-------|---|--------|------|-----------|---|"]
+        for model in ("gnn", "sir", "persist"):
+            for k in (1, 2, 4):
+                for chart in ("viral50", "top200"):
+                    v = m2_stats.get((model, k, chart, reading), {})
+                    if v:
+                        lines.append(
+                            f"| {model} | {k} | {chart} | {v['rmse']:.5f} | {v['dir_acc']:.3f} | {v['n']} |"
+                        )
+        lines.append("")
+
+    lines += ["## Statistics (GNN vs SIR, Mode 2 — paired by song, Holm-corrected)", ""]
+    for reading in readings:
+        lines += [f"### {reading_label[reading]}", ""]
+        lines += [
+            "| k | Regime | Wilcoxon p | Holm p | Win rate | Bootstrap CI (mean sq-err diff) | n songs | n origins |",
+            "|---|--------|------------|--------|----------|----------------------------------|---------|-----------|",
+        ]
         for k in (1, 2, 4):
             for chart in ("viral50", "top200"):
-                v = m2_stats.get((model, k, chart), {})
+                v = m2_stats.get(("wilcoxon", k, chart, reading), {})
                 if v:
                     lines.append(
-                        f"| {model} | {k} | {chart} | {v['rmse']:.5f} | {v['dir_acc']:.3f} | {v['n']} |"
+                        f"| {k} | {chart} | {v.get('p_value', float('nan')):.3e} | "
+                        f"{v.get('p_value_holm', float('nan')):.3e} | "
+                        f"{v.get('win_rate', float('nan')):.3f} | "
+                        f"[{v.get('ci_lo', float('nan')):.4f}, {v.get('ci_hi', float('nan')):.4f}] | "
+                        f"{v.get('n_songs', 0)} | {v.get('n_origins', 0)} |"
                     )
-
-    lines += ["", "## Statistics (GNN vs SIR, Mode 2)", ""]
-    lines += ["| k | Regime | Wilcoxon p | Bootstrap CI (mean sq-err diff) |",
-              "|---|--------|------------|----------------------------------|"]
-    for k in (1, 2, 4):
-        for chart in ("viral50", "top200"):
-            v = m2_stats.get(("wilcoxon", k, chart), {})
-            if v:
-                lines.append(
-                    f"| {k} | {chart} | {v.get('p_value', float('nan')):.3e} | "
-                    f"[{v.get('ci_lo', float('nan')):.4f}, {v.get('ci_hi', float('nan')):.4f}] |"
-                )
+        lines.append("")
 
     # Long-hit subgroup
     lh_gnn = mode1_gnn[mode1_gnn["is_long_hit"]]["rmse"].mean()
@@ -411,6 +472,8 @@ def main() -> None:
                         help="Seed weeks for Mode-1 rollout (default = W from checkpoint)")
     parser.add_argument("--origin-stride", type=int, default=4)
     parser.add_argument("--device", default="cpu")
+    parser.add_argument("--split-regime", default="current", choices=["current", "pre_pandemia"],
+                        help="named train/val/test boundary regime (default: current)")
     args = parser.parse_args()
 
     RESULTS.mkdir(parents=True, exist_ok=True)
@@ -499,6 +562,7 @@ def main() -> None:
 
     _step("M1/C — Compute per-song RMSE → mode1_per_song.parquet")
     mode1 = _mode1_per_song(gnn_free_df, sir_m1_df, ts_df)
+    mode1["split_regime"] = args.split_regime
     mode1.to_parquet(RESULTS / "mode1_per_song.parquet")
     _banner(f"mode1_per_song: {len(mode1)} rows (songs × models)")
     checklist["C2"] = True  # same weekly axis by construction (both use aggregate_weekly)
@@ -507,7 +571,7 @@ def main() -> None:
     # M2 — Mode 2: Recursive Forecasting                                   #
     # ------------------------------------------------------------------ #
     _step("M2/A — Build origins")
-    origins = _build_origins(weekly_df_full, ks, args.origin_stride, args.smoke)
+    origins = _build_origins(weekly_df_full, ks, args.origin_stride, args.smoke, args.split_regime)
     _banner(f"Origins: {len(origins)} rows (songs × weeks), stride={args.origin_stride}")
 
     _step("M2/B — GNN recursive rollout (Mode 2)")
@@ -515,7 +579,10 @@ def main() -> None:
     if args.force or not rec_path.exists():
         from music_diffusion_gnn.evaluation.rollout import gnn_rollout_recursive
         t0 = time.time()
-        rec_df = gnn_rollout_recursive(model, g, weekly_df_full, origins, W=W, ks=ks, device=args.device)
+        rec_df = gnn_rollout_recursive(
+            model, g, weekly_df_full, origins, W=W, ks=ks, device=args.device,
+            regime=args.split_regime,
+        )
         rec_df.to_parquet(rec_path)
         _banner(f"GNN recursive: {len(rec_df)} rows  [{_elapsed(t0)}]")
     else:
@@ -530,7 +597,7 @@ def main() -> None:
     if args.force or not sir_m2_path.exists():
         # Heaviest single step (thousands of per-origin refits) — cache to survive
         # a Colab disconnect; RESULTS may be Drive-backed for durability.
-        sir_m2_df = run_sir_mode2(ts_df, origins, ks=ks)
+        sir_m2_df = run_sir_mode2(ts_df, origins, ks=ks, regime=args.split_regime)
         sir_m2_df.to_parquet(sir_m2_path)
     else:
         sir_m2_df = pd.read_parquet(sir_m2_path)
@@ -541,21 +608,24 @@ def main() -> None:
 
     _step("M2/D — Assemble mode2_horizons.parquet")
     mode2 = _mode2_horizons(rec_df, sir_m2_df, pers_df)
+    mode2["split_regime"] = args.split_regime
     mode2.to_parquet(RESULTS / "mode2_horizons.parquet")
     _banner(f"mode2_horizons: {len(mode2)} rows")
     checklist["C5"] = True
 
     _step("M2/E — Statistics (RMSE + directional acc + Wilcoxon + bootstrap)")
-    m2_stats = _mode2_stats(mode2, weekly_df_full, seed=args.seed)
+    onchart = _onchart_weeks_set(ts_df)
+    m2_stats = _mode2_stats(mode2, weekly_df_full, seed=args.seed, onchart=onchart)
     checklist["C7"] = True  # long-hit subgroup always computed from mode1
 
-    # C6: GNN < SIR in ≥ 2 of 3 horizons per regime
+    # C6: GNN < SIR in ≥ 2 of 3 horizons per regime — gated on the full-span
+    # reading (unchanged semantics); on-chart is reported alongside, not gated.
     c6_pass = []
     for chart in ("viral50", "top200"):
         wins = sum(
             1 for k in ks
-            if m2_stats.get(("gnn", k, chart), {}).get("rmse", float("inf")) <
-               m2_stats.get(("sir", k, chart), {}).get("rmse", float("inf"))
+            if m2_stats.get(("gnn", k, chart, "full"), {}).get("rmse", float("inf")) <
+               m2_stats.get(("sir", k, chart, "full"), {}).get("rmse", float("inf"))
         )
         c6_pass.append(wins >= 2)
     checklist["C6"] = all(c6_pass)
@@ -676,7 +746,10 @@ def main() -> None:
     checklist["C12"] = True  # summary.md written below
 
     _step("Summary — summary.md + C1-C12 checklist")
-    _write_summary(mode1, m2_stats, checklist, RESULTS / "summary.md", args.smoke, n_sir_excl)
+    _write_summary(
+        mode1, m2_stats, checklist, RESULTS / "summary.md", args.smoke, n_sir_excl,
+        split_regime=args.split_regime,
+    )
 
     print(f"\n  Artifacts in {RESULTS.relative_to(ROOT)}:")
     for f in sorted(RESULTS.iterdir()):

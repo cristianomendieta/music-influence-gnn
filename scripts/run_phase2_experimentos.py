@@ -35,14 +35,14 @@ def log(msg: str) -> None:
     print(f"[{time.strftime('%H:%M:%S')}] {msg}", flush=True)
 
 
-def main(mode: str, smoke: bool, resume: bool, seed: int) -> int:
+def main(mode: str, smoke: bool, resume: bool, seed: int, split_regime: str = "current") -> int:
     import numpy as np
     import pandas as pd
     import torch
 
     from music_diffusion_gnn.training.dataset import (
         aggregate_weekly, temporal_split, build_samples,
-        TRAIN_END_WEEK, TEST_START_WEEK,
+        get_split_regime,
     )
     from music_diffusion_gnn.training.trainer import (
         Config, train_one, evaluate, DEFAULT_GRID,
@@ -60,10 +60,12 @@ def main(mode: str, smoke: bool, resume: bool, seed: int) -> int:
     g = torch.load(GRAPH_DIR / "hetero_full.pt", weights_only=False).to(DEVICE)
     ts = pd.read_parquet(ROOT / "data" / "processed" / "timeseries.parquet")
     weekly = aggregate_weekly(ts)
-    splits_df = temporal_split(weekly)
+    splits_df = temporal_split(weekly, regime=split_regime)
+    _regime = get_split_regime(split_regime)
     log(f"grafo {g.num_nodes} nós | train/val/test rows = "
         f"{len(splits_df['train'])}/{len(splits_df['val'])}/{len(splits_df['test'])}")
-    log(f"fronteiras: train<= {TRAIN_END_WEEK}  val..{TEST_START_WEEK-1}  test>= {TEST_START_WEEK}")
+    log(f"split_regime={split_regime}  fronteiras: train<= {_regime.train_end_week}  "
+        f"val..{_regime.val_end_week}  test>= {_regime.test_start_week}")
 
     # ---- first_seen GLOBAL ----
     fs_global = weekly.groupby(["song_id", "chart"])["week"].min().to_dict()
@@ -187,13 +189,14 @@ def main(mode: str, smoke: bool, resume: bool, seed: int) -> int:
     lines = [
         "# Phase 2 — Experimentos (runner headless)\n\n",
         f"**Melhor config:** `{best_cfg}`  |  **val_mse(grid)** = {ck['val_mse']:.6f}\n",
+        f"**Split regime:** `{split_regime}`\n",
         f"**Configs na grid:** {len(grid_df)}  |  **SMOKE:** {smoke}\n\n",
         "## Forecasting — VAL (held-out)\n\n",
         "| Regime | GNN MSE | GNN RMSE | Persistência MSE | Δ |\n",
         "|--------|---------|----------|------------------|---|\n",
         f"| viral50 | {fc_val['mse_viral50']:.6f} | {fc_val['rmse_viral50']:.6f} | {fc_val['persist_mse_viral50']:.6f} | {better(fc_val['mse_viral50'], fc_val['persist_mse_viral50'])} |\n",
         f"| top200  | {fc_val['mse_top200']:.6f} | {fc_val['rmse_top200']:.6f} | {fc_val['persist_mse_top200']:.6f} | {better(fc_val['mse_top200'], fc_val['persist_mse_top200'])} |\n\n",
-        "## Forecasting — TEST (held-out, semana >= 208)\n\n",
+        f"## Forecasting — TEST (held-out, semana >= {_regime.test_start_week})\n\n",
         "| Regime | GNN MSE | GNN RMSE | Persistência MSE | Δ |\n",
         "|--------|---------|----------|------------------|---|\n",
         f"| viral50 | {fc_test['mse_viral50']:.6f} | {fc_test['rmse_viral50']:.6f} | {fc_test['persist_mse_viral50']:.6f} | {better(fc_test['mse_viral50'], fc_test['persist_mse_viral50'])} |\n",

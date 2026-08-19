@@ -165,6 +165,7 @@ def gnn_rollout_recursive(
     W: int,
     ks: tuple[int, ...] = (1, 2, 4),
     device: str = "cpu",
+    regime: str = "current",
 ) -> pd.DataFrame:
     """Recursive GNN rollout (Mode 2): genuine k-step-ahead forecasting.
 
@@ -185,19 +186,21 @@ def gnn_rollout_recursive(
         weekly_df: output of ``aggregate_weekly`` (for ``y_true`` lookups and
             each (song,chart)'s ``first_seen`` week, for window padding).
         origins: DataFrame with columns ``[song_id, chart, week]``, one row
-            per evaluation origin. Restricted internally to the test span
-            (``week >= TEST_START_WEEK``) and to origins with room for the
-            full horizon (``week + max(ks) <= 260``) — both filters applied
-            defensively even if the caller already applied them.
+            per evaluation origin. Restricted internally to the ``regime``'s
+            test span and to origins with room for the full horizon
+            (``week + max(ks) <= 260``) — both filters applied defensively
+            even if the caller already applied them.
         W: look-back window length (must match the model's trained config).
         ks: forecast horizons in weeks.
         device: torch device for model + graph.
+        regime: split-regime name (``SPLIT_REGIMES``, default ``"current"``)
+            whose test-span boundaries gate ``origins``.
 
     Returns:
         DataFrame with columns ``[song_id, chart, origin_week, k, y_true,
         y_pred]``, one row per ``(origin, k)``.
     """
-    from music_diffusion_gnn.training.dataset import TEST_START_WEEK
+    from music_diffusion_gnn.training.dataset import get_split_regime
 
     model = model.to(device)
     g = g.to(device)
@@ -209,9 +212,12 @@ def gnn_rollout_recursive(
     first_seen = weekly_df.groupby(["song_id", "chart"])["week"].min().to_dict()
     weekly_indexed = weekly_df.set_index(["song_id", "chart", "week"])["y_week"]
 
+    r = get_split_regime(regime)
     max_k = max(ks)
     n_weeks = model.pop_bank.shape[0]
-    valid = (origins["week"] >= TEST_START_WEEK) & (origins["week"] + max_k <= n_weeks - 1)
+    valid = (origins["week"] >= r.test_start_week) & (origins["week"] + max_k <= n_weeks - 1)
+    if r.test_end_week is not None:
+        valid &= origins["week"] <= r.test_end_week
     origins = origins.loc[valid, ["song_id", "chart", "week"]]
 
     orig_bank = model.pop_bank

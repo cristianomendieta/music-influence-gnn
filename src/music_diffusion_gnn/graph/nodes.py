@@ -96,7 +96,7 @@ def build_music_nodes(
     # Identify missing rows
     acoustic_missing = np.any(np.isnan(acoustic_raw), axis=1).astype(np.float32)
 
-    # Z-score (NaN rows get 0.0 = z-scored median)
+    # Z-score (NaN rows get 0.0 = z-scored mean, not median — see docs.md #11 EDA)
     acoustic_z = np.where(
         np.isnan(acoustic_raw),
         0.0,

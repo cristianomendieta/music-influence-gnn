@@ -7,7 +7,7 @@ import pandas as pd
 from joblib import Parallel, delayed
 
 from music_diffusion_gnn.baselines.sir import _sir_curve, fit_sir
-from music_diffusion_gnn.training.dataset import TEST_START_WEEK
+from music_diffusion_gnn.training.dataset import get_split_regime
 
 
 def sir_weekly_from_fit(daily_y: pd.Series, fit) -> pd.Series:
@@ -161,14 +161,17 @@ def _sir_mode2_one_group(
 
 
 def run_sir_mode2(
-    ts_df: pd.DataFrame, origins: pd.DataFrame, ks: tuple[int, ...] = (1, 2, 4)
+    ts_df: pd.DataFrame,
+    origins: pd.DataFrame,
+    ks: tuple[int, ...] = (1, 2, 4),
+    regime: str = "current",
 ) -> pd.DataFrame:
     """Run SIR Mode-2 (causal refit-and-simulate per origin) over a set of origins.
 
-    Restricts `origins` to the test span (`week >= TEST_START_WEEK`) as a safety
-    net even if the caller already filtered. For each (song_id, chart) group,
-    builds its (date, y, week) frame once, then forecasts every origin week for
-    that group via `sir_causal_forecast`. Non-convergent or too-short origins still
+    Restricts `origins` to the `regime`'s test span as a safety net even if
+    the caller already filtered. For each (song_id, chart) group, builds its
+    (date, y, week) frame once, then forecasts every origin week for that
+    group via `sir_causal_forecast`. Non-convergent or too-short origins still
     emit a row per k with `y_pred_sir=NaN, converged=False` — never silently
     dropped. Parallelized per (song_id, chart) group via joblib (loky backend).
 
@@ -178,12 +181,18 @@ def run_sir_mode2(
         origins: DataFrame with columns [song_id, chart, week] — one row per
             evaluation origin.
         ks: forecast horizons in weeks.
+        regime: split-regime name (`SPLIT_REGIMES`, default "current") whose
+            test-span boundaries gate `origins`.
 
     Returns:
         DataFrame, columns exactly [song_id, chart, origin_week, k, y_pred_sir,
         converged], one row per (origin, k).
     """
-    origins = origins[origins["week"] >= TEST_START_WEEK]
+    r = get_split_regime(regime)
+    valid = origins["week"] >= r.test_start_week
+    if r.test_end_week is not None:
+        valid &= origins["week"] <= r.test_end_week
+    origins = origins[valid]
 
     origins_by_group = origins.groupby(["song_id", "chart"], observed=True)["week"].apply(
         lambda s: sorted(s.unique().tolist())

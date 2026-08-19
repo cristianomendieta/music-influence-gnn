@@ -16,16 +16,73 @@ if TYPE_CHECKING:
     pass
 
 # ---------------------------------------------------------------------------
-# Temporal split boundaries (derived from ROADMAP dates)
+# Split regimes (ADR 0005): named, selectable temporal boundaries
 # ---------------------------------------------------------------------------
 # Note: the formula (iso_year - 2017)*52 + (iso_week - 1) is not bijective
 # for years with 53 ISO weeks (e.g. 2020). The dates 2020-06-30 and
 # 2020-07-01 both map to week 182; 2020-12-31 and 2021-01-01 both map to
-# 208. We therefore define a clean 3-way partition using TRAIN_END and
-# TEST_START as the two boundary weeks and assign each week to exactly one
-# split (val = strictly between boundaries).
-TRAIN_END_WEEK  = week_index("2020-06-30")   # 182  (ISO 2020-W27)
-TEST_START_WEEK = week_index("2020-12-31")   # 208  (ISO 2020-W53 / 2021-W01)
+# 208. Each regime therefore pins explicit boundary dates that land cleanly
+# on one side of any such ambiguity.
+
+
+@dataclass(frozen=True)
+class SplitRegime:
+    """A named train/val/test week-boundary configuration.
+
+    ``val`` is the open interval strictly between ``train_end_week`` and
+    ``test_start_week``. ``test_end_week=None`` means the test split is
+    open-ended (runs to the end of available data); a finite value bounds it
+    (used by the pre-pandemia regime, which must not bleed into 2020+ data).
+    """
+
+    name: str
+    train_end_week: int
+    val_start_week: int
+    val_end_week: int
+    test_start_week: int
+    test_end_week: int | None
+
+
+SPLIT_REGIMES: dict[str, SplitRegime] = {
+    # Qualificação split: train ≤ 2020-06-30, val 2020-07..2020-12, test 2021+ (open-ended).
+    "current": SplitRegime(
+        name="current",
+        train_end_week=week_index("2020-06-30"),   # 182 (ISO 2020-W27)
+        val_start_week=week_index("2020-06-30") + 1,
+        val_end_week=week_index("2020-12-31") - 1,
+        test_start_week=week_index("2020-12-31"),   # 208 (ISO 2020-W53/2021-W01)
+        test_end_week=None,
+    ),
+    # Robustness check (ADR 0005): entirely pre-pandemic, train 2017-2018,
+    # val H1 2019, test H2 2019 — bounded so 2020+ data never enters any split.
+    "pre_pandemia": SplitRegime(
+        name="pre_pandemia",
+        train_end_week=week_index("2018-12-30"),    # 2018-W52
+        val_start_week=week_index("2018-12-31"),     # 2019-W01
+        val_end_week=week_index("2019-06-30"),        # 2019-W26
+        test_start_week=week_index("2019-07-01"),     # 2019-W27
+        test_end_week=week_index("2019-12-29"),        # 2019-W52
+    ),
+}
+DEFAULT_SPLIT_REGIME = "current"
+
+
+def get_split_regime(regime: str | SplitRegime = DEFAULT_SPLIT_REGIME) -> SplitRegime:
+    """Resolve a regime name (or pass-through a ``SplitRegime``) via ``SPLIT_REGIMES``."""
+    if isinstance(regime, SplitRegime):
+        return regime
+    try:
+        return SPLIT_REGIMES[regime]
+    except KeyError:
+        raise ValueError(
+            f"Unknown split regime {regime!r}; available: {sorted(SPLIT_REGIMES)}"
+        ) from None
+
+
+# Backward-compatible module-level aliases — equal to the "current" regime,
+# kept because they're imported directly across evaluation/training code.
+TRAIN_END_WEEK  = SPLIT_REGIMES["current"].train_end_week   # 182
+TEST_START_WEEK = SPLIT_REGIMES["current"].test_start_week  # 208
 # train : week <= 182
 # val   : 183 <= week <= 207
 # test  : week >= 208
@@ -74,27 +131,41 @@ def aggregate_weekly(ts_df: pd.DataFrame) -> pd.DataFrame:
 # T3: temporal_split
 # ---------------------------------------------------------------------------
 
-def temporal_split(weekly_df: pd.DataFrame) -> dict[str, pd.DataFrame]:
+def temporal_split(
+    weekly_df: pd.DataFrame, regime: str | SplitRegime = DEFAULT_SPLIT_REGIME
+) -> dict[str, pd.DataFrame]:
     """Split weekly DataFrame into train / val / test by week boundary.
 
-    Boundaries (from ROADMAP):
-      train : week <= TRAIN_END_WEEK  (≤ 2020-06-30)
-      val   : VAL_START_WEEK <= week <= VAL_END_WEEK  (2020-07 .. 2020-12)
-      test  : week >= TEST_START_WEEK  (2021)
+    ``regime`` selects a named :class:`SplitRegime` from ``SPLIT_REGIMES``
+    (default ``"current"``, identical to the boundaries used at qualificação).
+    Passing ``"current"`` (or omitting ``regime``) reproduces today's numbers
+    exactly; other regimes (e.g. ``"pre_pandemia"``) use their own bounded
+    train/val/test windows.
 
-    Splits are disjoint and their union equals the full DataFrame.
+    Splits are pairwise disjoint. For the default open-ended regime their
+    union equals the full DataFrame; a bounded regime instead drops rows
+    outside its window (they belong to no split).
     """
-    train = weekly_df[weekly_df["week"] <= TRAIN_END_WEEK].copy()
+    r = get_split_regime(regime)
+
+    train = weekly_df[weekly_df["week"] <= r.train_end_week].copy()
     val   = weekly_df[
-        (weekly_df["week"] > TRAIN_END_WEEK) & (weekly_df["week"] < TEST_START_WEEK)
+        (weekly_df["week"] >= r.val_start_week) & (weekly_df["week"] <= r.val_end_week)
     ].copy()
-    test  = weekly_df[weekly_df["week"] >= TEST_START_WEEK].copy()
+    if r.test_end_week is None:
+        test = weekly_df[weekly_df["week"] >= r.test_start_week].copy()
+    else:
+        test = weekly_df[
+            (weekly_df["week"] >= r.test_start_week) & (weekly_df["week"] <= r.test_end_week)
+        ].copy()
 
     # Verify clean partition (no week appears in more than one split)
     assert set(train["week"].unique()).isdisjoint(set(val["week"].unique()))
     assert set(val["week"].unique()).isdisjoint(set(test["week"].unique()))
-    # Union covers all rows
-    assert len(train) + len(val) + len(test) == len(weekly_df)
+    assert set(train["week"].unique()).isdisjoint(set(test["week"].unique()))
+    if r.test_end_week is None:
+        # Open-ended regime: union covers all rows (unchanged current behavior)
+        assert len(train) + len(val) + len(test) == len(weekly_df)
 
     return {"train": train, "val": val, "test": test}
 
