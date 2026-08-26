@@ -1,0 +1,230 @@
+<title>Atributos de Gênero</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f6f5f1;
+    --surface-1: #ffffff;
+    --surface-2: #efece4;
+    --text-primary: #1c1e1a;
+    --text-secondary: #52564c;
+    --text-muted: #8b8f83;
+    --line: #dedad0;
+    --line-strong: #c7c2b3;
+    --accent: #2a78d6;
+    --accent-soft: #e5eefa;
+    --accent-ink: #1c4c85;
+    --reject: #e34948;
+    --reject-soft: #fbe9e9;
+    --status-warning: #fab219;
+    --status-warning-soft: #fdf1d9;
+    --status-warning-ink: #8a5a00;
+    --mono: "IBM Plex Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #14161a;
+      --surface-1: #1b1e23;
+      --surface-2: #20242a;
+      --text-primary: #e9e8e2;
+      --text-secondary: #b3b2a8;
+      --text-muted: #767a72;
+      --line: #2c2f33;
+      --line-strong: #3b3f43;
+      --accent: #3987e5;
+      --accent-soft: #1c2b3d;
+      --accent-ink: #9dc4f2;
+      --reject: #e66767;
+      --reject-soft: #3a2323;
+      --status-warning: #fab219;
+      --status-warning-soft: #332821;
+      --status-warning-ink: #f0c476;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #14161a;
+    --surface-1: #1b1e23;
+    --surface-2: #20242a;
+    --text-primary: #e9e8e2;
+    --text-secondary: #b3b2a8;
+    --text-muted: #767a72;
+    --line: #2c2f33;
+    --line-strong: #3b3f43;
+    --accent: #3987e5;
+    --accent-soft: #1c2b3d;
+    --accent-ink: #9dc4f2;
+    --reject: #e66767;
+    --reject-soft: #3a2323;
+    --status-warning: #fab219;
+    --status-warning-soft: #332821;
+    --status-warning-ink: #f0c476;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text-primary); font-family: var(--sans); line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  main { max-width: 900px; margin: 0 auto; padding: 3.5rem 1.5rem 5rem; display: flex; flex-direction: column; gap: 3rem; }
+
+  header { display: flex; flex-direction: column; gap: 0.9rem; border-bottom: 1px solid var(--line); padding-bottom: 1.8rem; }
+  .eyebrow { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); }
+  h1 { font-family: var(--serif); font-weight: 500; font-size: clamp(1.7rem, 3.6vw, 2.3rem); margin: 0; text-wrap: balance; }
+  .dek { font-size: 1rem; color: var(--text-secondary); max-width: 66ch; }
+  .status-row { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; }
+  .chip { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.03em; text-transform: uppercase; padding: 0.25rem 0.6rem; border-radius: 999px; }
+  .chip.decided { background: var(--accent-soft); color: var(--accent-ink); }
+  .chip.blocked { background: var(--status-warning-soft); color: var(--status-warning-ink); }
+
+  section { display: flex; flex-direction: column; gap: 1rem; }
+  .panel-tag { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+  h2 { font-family: var(--serif); font-weight: 500; font-size: 1.25rem; margin: 0; text-wrap: balance; }
+
+  .critique-list { display: flex; flex-direction: column; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .critique { background: var(--surface-1); padding: 1rem 1.3rem; display: grid; grid-template-columns: 1.6rem 1fr; gap: 0.9rem; align-items: start; }
+  .critique .n { font-family: var(--mono); color: var(--reject); font-size: 0.95rem; }
+  .critique p { margin: 0; font-size: 0.92rem; color: var(--text-secondary); }
+  .critique b { color: var(--text-primary); }
+
+  .transform { display: grid; grid-template-columns: 1fr auto 1fr; gap: 1.2rem; align-items: stretch; }
+  .transform .arrow { display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-family: var(--mono); font-size: 1.4rem; }
+  .tblock { background: var(--surface-1); border: 1px solid var(--line); border-radius: 12px; padding: 1.4rem; display: flex; flex-direction: column; gap: 0.7rem; }
+  .tblock.before { border-color: var(--reject); border-style: dashed; }
+  .tblock.after { border-color: var(--accent); }
+  .tblock .kicker { font-family: var(--mono); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .tblock.before .kicker { color: var(--reject); }
+  .tblock.after .kicker { color: var(--accent-ink); }
+  .tblock .headline { font-family: var(--serif); font-size: 1.15rem; margin: 0; }
+  .tblock ul { margin: 0; padding-left: 1.1rem; font-size: 0.86rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 0.35rem; }
+  .tblock .formula { font-family: var(--mono); font-size: 0.8rem; background: var(--surface-2); padding: 0.6rem 0.8rem; border-radius: 6px; color: var(--text-primary); }
+
+  .rule-card { background: var(--surface-1); border: 1px solid var(--line); border-radius: 12px; padding: 1.4rem 1.6rem; display: flex; flex-direction: column; gap: 0.8rem; }
+  .rule { display: grid; grid-template-columns: 1.4rem 1fr; gap: 0.7rem; align-items: start; font-size: 0.9rem; }
+  .rule .mark { font-family: var(--mono); }
+  .rule.ok .mark { color: var(--accent-ink); }
+  .rule.no .mark { color: var(--reject); }
+  .rule p { margin: 0; color: var(--text-secondary); }
+  .rule b { color: var(--text-primary); }
+  .rule code { font-family: var(--mono); font-size: 0.85em; background: var(--surface-2); padding: 0.05rem 0.35rem; border-radius: 4px; }
+
+  .rejected-card { background: var(--reject-soft); border: 1px solid color-mix(in srgb, var(--reject) 35%, var(--line)); border-radius: 12px; padding: 1.3rem 1.5rem; display: flex; flex-direction: column; gap: 0.5rem; }
+  .rejected-card .kicker { font-family: var(--mono); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--reject); }
+  .rejected-card p { margin: 0; font-size: 0.9rem; color: var(--text-secondary); }
+  .rejected-card b { color: var(--text-primary); }
+
+  footer { border-top: 1px solid var(--line); padding-top: 1.4rem; font-family: var(--mono); font-size: 0.74rem; color: var(--text-muted); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.6rem; }
+
+  @media (max-width: 620px) {
+    .transform { grid-template-columns: 1fr; }
+    .transform .arrow { transform: rotate(90deg); padding: 0.3rem 0; }
+  }
+</style>
+
+<main>
+
+  <header>
+    <span class="eyebrow">music-influence-gnn · item 05</span>
+    <h1>O que muda na representação de gênero</h1>
+    <p class="dek">
+      A banca apontou três problemas na forma como gênero entra no grafo. A decisão já foi tomada
+      (ADR 0003), mas a implementação depende do diagnóstico do bloqueador P0 (item 04) antes de
+      qualquer retreino.
+    </p>
+    <div class="status-row">
+      <span class="chip decided">decisão registrada · ADR 0003</span>
+      <span class="chip blocked">implementação bloqueada por item 04</span>
+    </div>
+  </header>
+
+  <section>
+    <span class="panel-tag">o problema</span>
+    <h2>O que a banca cobrou sobre a tabela de gênero</h2>
+    <div class="critique-list">
+      <div class="critique">
+        <span class="n">1</span>
+        <p><b>Sem fórmula.</b> Gênero era uma tabela de 530×32 parâmetros livres, inicializada aleatoriamente e ajustada fim a fim junto com o resto da rede. Não existe uma linha que se possa escrever na metodologia explicando de onde vem esse número.</p>
+      </div>
+      <div class="critique">
+        <span class="n">2</span>
+        <p><b>Não é relacional.</b> É uma identidade aprendida por gênero, não uma propriedade derivada de como os gêneros se relacionam entre si, o que contradiz a proposta central do trabalho (usar estrutura relacional).</p>
+      </div>
+      <div class="critique">
+        <span class="n">3</span>
+        <p><b>Nunca explicada no texto.</b> A tabela existia no código, mas não era descrita na metodologia da qualificação.</p>
+      </div>
+    </div>
+    <p style="font-size:0.85rem; color:var(--text-muted); margin:0;">
+      Além disso, há um resíduo de código morto: o grafo carrega um <code style="font-family:var(--mono)">x_genre</code>
+      aleatório que o modelo nunca usa (é sobrescrito pelo embedding aprendido). Sai junto.
+    </p>
+  </section>
+
+  <section>
+    <span class="panel-tag">a decisão</span>
+    <h2>Tabela aprendida → atributos com fórmula</h2>
+    <div class="transform">
+      <div class="tblock before">
+        <span class="kicker">até a qualificação</span>
+        <p class="headline">Tabela 530×32</p>
+        <ul>
+          <li>Parâmetros livres, sem relação com dado nenhum</li>
+          <li>Inicializada aleatória, ajustada por gradiente</li>
+          <li>Impossível de escrever como fórmula</li>
+        </ul>
+      </div>
+      <div class="arrow">→</div>
+      <div class="tblock after">
+        <span class="kicker">a partir daqui</span>
+        <p class="headline">3 atributos estruturais</p>
+        <ul>
+          <li>Grau (nº de gêneros conectados)</li>
+          <li>Grau ponderado (soma dos pesos de coocorrência)</li>
+          <li>Nº de artistas associados ao gênero</li>
+        </ul>
+        <span class="formula">derivados de data/genre_network/*.csv</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <span class="panel-tag">restrição causal</span>
+    <h2>De onde os atributos podem vir, e de onde não podem</h2>
+    <div class="rule-card">
+      <div class="rule ok">
+        <span class="mark">✓</span>
+        <p><b>Rede gênero↔gênero por ano</b> (<code>br-genre_network-2017.csv</code> … <code>-2022.csv</code>): colunas
+        <code>Source</code>, <code>Target</code>, <code>Weight</code>. Só entram os anos dentro da janela de <b>treino</b>
+        do regime de split ativo (item 02), nunca anos de validação ou teste.</p>
+      </div>
+      <div class="rule no">
+        <span class="mark">✗</span>
+        <p><b>Proibidas:</b> <code>Avg_Popularity</code> e <code>Avg_Streams</code>, do mesmo arquivo. São médias sobre
+        <b>todo o período</b> (2017–2022), inclusive o período de teste, o mesmo alvo que o modelo tenta prever.
+        Entrariam como vazamento direto.</p>
+      </div>
+      <div class="rule ok">
+        <span class="mark">✓</span>
+        <p>Como o regime de split agora é parametrizado, os atributos <b>precisam ser recalculados por regime</b>: o
+        conjunto de anos de treino de <code>current</code> e de <code>pre_pandemia</code> é diferente.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <span class="panel-tag">alternativa considerada</span>
+    <h2>Por que não simplesmente remover o nó de gênero</h2>
+    <div class="rejected-card">
+      <span class="kicker">rejeitada</span>
+      <p><b>Eliminar o tipo de nó gênero do grafo.</b> Resolveria a crítica por deleção (não tem mais tabela pra
+      justificar), mas descartaria o canal de difusão mais plausível do grafo (músicas do mesmo gênero
+      difundem popularidade entre si) e esvaziaria a ablação por tipo de aresta, que é um dos critérios de
+      aceitação já publicados na qualificação.</p>
+    </div>
+  </section>
+
+  <footer>
+    <span>fonte: docs/adr/0003-atributos-de-genero-derivados.md · .scratch/next-milestone/issues/05</span>
+    <span>bloqueado por: item 04 (diagnóstico do P0)</span>
+  </footer>
+
+</main>

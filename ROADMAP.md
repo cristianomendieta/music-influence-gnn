@@ -62,13 +62,22 @@ metodologia, dataset e suas limitações na introdução, caracterização justa
 fluxograma do processamento dos dados, EDA que sustente a imputação por mediana, e
 a seção 4.7 separando proposta de fundamento.
 
+Somam-se as divergências texto ↔ código recuperadas das sessões de preparação da
+qualificação, consolidadas em [docs/achados-qualificacao.md](docs/achados-qualificacao.md):
+a fórmula da cabeça temporal no documento, três correções pontuais em slides e specs,
+e as limitações de arquitetura que hoje só existem como resposta oral.
+
 ## Trabalho fatiado
 
-15 tickets em [.scratch/next-milestone/issues/](.scratch/next-milestone/issues/),
-com as dependências entre eles declaradas.
+20 tickets em [.scratch/next-milestone/issues/](.scratch/next-milestone/issues/),
+com as dependências entre eles declaradas. Os itens 16 a 20 entraram em 2026-08-19,
+vindos dos achados da preparação da qualificação.
 
 Podem começar já: **01** (recorte on-chart), **02** (regime de split parametrizado),
 **03** (estatística correta), **11** (EDA da imputação), **12** (glossário no texto),
-**13** (dataset na introdução).
+**13** (dataset na introdução), **16** (fórmula da cabeça temporal no documento),
+**17** (correções pontuais em slides e specs), **20** (limitações de arquitetura no texto).
 
-Caminho crítico: **01 → 04 → 05 → 06 → {08, 09} → 10**.
+Caminho crítico: **01 → 04 → 05 → 06 → {08, 09} → 10**. Os itens **18** e **19**
+(cotrajetória por chart, cabeça sensível ao chart) pendem de **06** e são variações de
+arquitetura, não pré-requisito do argumento central.

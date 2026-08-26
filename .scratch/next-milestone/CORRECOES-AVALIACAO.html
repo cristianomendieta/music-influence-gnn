@@ -1,0 +1,506 @@
+<title>Correções da Avaliação</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f6f5f1;
+    --surface-1: #ffffff;
+    --surface-2: #efece4;
+    --text-primary: #1c1e1a;
+    --text-secondary: #52564c;
+    --text-muted: #8b8f83;
+    --line: #dedad0;
+    --line-strong: #c7c2b3;
+    --series-gnn: #2a78d6;
+    --series-sir: #eb6834;
+    --series-persist: #1baf7a;
+    --status-warning: #fab219;
+    --status-warning-ink: #8a5a00;
+    --status-good: #0ca30c;
+    --band-fill: rgba(42, 120, 214, 0.10);
+    --band-line: rgba(42, 120, 214, 0.55);
+    --mono: "IBM Plex Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #14161a;
+      --surface-1: #1b1e23;
+      --surface-2: #20242a;
+      --text-primary: #e9e8e2;
+      --text-secondary: #b3b2a8;
+      --text-muted: #767a72;
+      --line: #2c2f33;
+      --line-strong: #3b3f43;
+      --series-gnn: #3987e5;
+      --series-sir: #d95926;
+      --series-persist: #199e70;
+      --status-warning: #fab219;
+      --status-warning-ink: #3a2a02;
+      --status-good: #0ca30c;
+      --band-fill: rgba(57, 135, 229, 0.14);
+      --band-line: rgba(57, 135, 229, 0.55);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #14161a;
+    --surface-1: #1b1e23;
+    --surface-2: #20242a;
+    --text-primary: #e9e8e2;
+    --text-secondary: #b3b2a8;
+    --text-muted: #767a72;
+    --line: #2c2f33;
+    --line-strong: #3b3f43;
+    --series-gnn: #3987e5;
+    --series-sir: #d95926;
+    --series-persist: #199e70;
+    --status-warning: #fab219;
+    --status-warning-ink: #3a2a02;
+    --status-good: #0ca30c;
+    --band-fill: rgba(57, 135, 229, 0.14);
+    --band-line: rgba(57, 135, 229, 0.55);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: var(--sans);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  main {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 3.5rem 1.5rem 5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 3.5rem;
+  }
+
+  header { display: flex; flex-direction: column; gap: 0.8rem; border-bottom: 1px solid var(--line); padding-bottom: 1.8rem; }
+  .eyebrow {
+    font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem;
+  }
+  h1 { font-family: var(--serif); font-weight: 500; font-size: clamp(1.7rem, 3.6vw, 2.3rem); margin: 0; text-wrap: balance; }
+  .dek { font-size: 1rem; color: var(--text-secondary); max-width: 66ch; }
+
+  section { display: flex; flex-direction: column; gap: 1.1rem; }
+  .panel-head { display: flex; flex-direction: column; gap: 0.35rem; }
+  .panel-tag {
+    font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  h2 { font-family: var(--serif); font-weight: 500; font-size: 1.3rem; margin: 0; text-wrap: balance; }
+  .panel-sub { font-size: 0.92rem; color: var(--text-secondary); max-width: 68ch; }
+
+  .card { background: var(--surface-1); border: 1px solid var(--line); border-radius: 12px; padding: 1.6rem; }
+
+  /* legend */
+  .legend { display: flex; gap: 1.3rem; flex-wrap: wrap; font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 0.9rem; }
+  .legend .item { display: flex; align-items: center; gap: 0.45rem; }
+  .swatch { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+
+  /* facet grid */
+  .facets { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.4rem; }
+  .facet-title { font-family: var(--mono); font-size: 0.78rem; color: var(--text-secondary); margin: 0 0 0.5rem; text-align: center; }
+  .chart-scroll { overflow-x: auto; }
+  svg text { font-family: var(--sans); }
+  .axis-label { fill: var(--text-muted); font-size: 10px; }
+  .value-label { fill: var(--text-primary); font-size: 10.5px; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .value-label.on-light { fill: var(--text-primary); }
+  .cat-label { fill: var(--text-secondary); font-size: 10.5px; }
+  .grid-line { stroke: var(--line); stroke-width: 1; }
+  bar { }
+
+  .takeaway {
+    font-size: 0.9rem; color: var(--text-secondary);
+    background: var(--surface-2); border-left: 3px solid var(--series-gnn);
+    padding: 0.7rem 1rem; border-radius: 0 8px 8px 0; margin-top: 0.4rem;
+  }
+  .takeaway b { color: var(--text-primary); }
+
+  /* mini table */
+  .mini-table-wrap { overflow-x: auto; margin-top: 1rem; }
+  table { border-collapse: collapse; width: 100%; min-width: 480px; }
+  thead th {
+    text-align: right; font-family: var(--mono); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--text-muted); padding: 0.45rem 0.7rem; border-bottom: 1px solid var(--line-strong);
+  }
+  thead th:first-child, tbody td:first-child { text-align: left; }
+  tbody td { padding: 0.45rem 0.7rem; border-bottom: 1px solid var(--line); font-size: 0.85rem; text-align: right; font-variant-numeric: tabular-nums; }
+  tbody tr:last-child td { border-bottom: none; }
+
+  /* stat pair callout */
+  .stat-pair { display: flex; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .stat-pair .half { flex: 1; background: var(--surface-1); padding: 1.2rem 1.4rem; display: flex; flex-direction: column; gap: 0.3rem; }
+  .stat-pair .half.old .num { color: var(--status-warning-ink); }
+  .stat-pair .half.new .num { color: var(--series-gnn); }
+  .stat-pair .num { font-family: var(--serif); font-size: 2rem; font-variant-numeric: tabular-nums; }
+  .stat-pair .label { font-size: 0.82rem; color: var(--text-secondary); }
+  .stat-pair .sub { font-family: var(--mono); font-size: 0.72rem; color: var(--text-muted); }
+  .stat-pair .arrow {
+    display: flex; align-items: center; justify-content: center; padding: 0 0.4rem;
+    font-family: var(--mono); color: var(--text-muted); font-size: 1.1rem; background: var(--surface-2);
+  }
+
+  /* timeline */
+  .timeline-wrap { display: flex; flex-direction: column; gap: 1.6rem; }
+  .timeline-row { display: flex; flex-direction: column; gap: 0.4rem; }
+  .timeline-row-head { display: flex; align-items: center; justify-content: space-between; }
+  .timeline-name { font-family: var(--mono); font-size: 0.82rem; color: var(--text-primary); font-weight: 600; }
+  .timeline-status {
+    font-family: var(--mono); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em;
+    padding: 0.15rem 0.5rem; border-radius: 999px;
+  }
+  .timeline-status.active { background: color-mix(in srgb, var(--status-good) 16%, transparent); color: var(--status-good); }
+  .timeline-status.pending { background: var(--surface-2); color: var(--text-muted); }
+  .timeline-track { position: relative; height: 42px; background: var(--surface-2); border-radius: 8px; overflow: hidden; border: 1px solid var(--line); }
+  .seg { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 0.68rem; color: var(--text-primary); border-right: 1px solid var(--surface-1); }
+  .seg.train { background: color-mix(in srgb, var(--series-gnn) 22%, var(--surface-2)); }
+  .seg.val   { background: color-mix(in srgb, var(--series-gnn) 38%, var(--surface-2)); }
+  .seg.test  { background: color-mix(in srgb, var(--series-gnn) 58%, var(--surface-2)); color: #fff; }
+  .seg.test.pandemia { background: repeating-linear-gradient(135deg, var(--status-warning), var(--status-warning) 6px, color-mix(in srgb, var(--status-warning) 75%, var(--surface-2)) 6px, color-mix(in srgb, var(--status-warning) 75%, var(--surface-2)) 12px); color: var(--status-warning-ink); }
+  .timeline-years { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 0.66rem; color: var(--text-muted); padding: 0 2px; }
+
+  footer {
+    border-top: 1px solid var(--line); padding-top: 1.4rem; font-family: var(--mono); font-size: 0.74rem;
+    color: var(--text-muted); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.6rem;
+  }
+</style>
+
+<main>
+
+  <header>
+    <span class="eyebrow">music-influence-gnn · itens 01, 02, 03</span>
+    <h1>O que as três correções da avaliação mudam</h1>
+    <p class="dek">
+      Números reais de <code>results/phase3/summary.md</code> (rodada completa, regime de split
+      <code>current</code>, 2026-08-18). Cada painel mostra o mesmo dado antes e depois de uma correção.
+    </p>
+  </header>
+
+  <!-- PANEL A — on-chart recorte -->
+  <section>
+    <div class="panel-head">
+      <span class="panel-tag">item 01 · recorte on-chart no Modo 2</span>
+      <h2>Sem recorte, a persistência parece acertar quase tudo</h2>
+      <p class="panel-sub">
+        Acerto direcional (acertar se a música sobe ou desce) do Modo 2, medido nas mesmas previsões,
+        em duas leituras: completa (inclui as ~95% das semanas em que a música está fora do chart, no piso)
+        e on-chart (só as semanas em que ela está de fato no chart).
+      </p>
+    </div>
+    <div class="card">
+      <div class="legend">
+        <span class="item"><span class="swatch" style="background:var(--series-gnn)"></span>GNN</span>
+        <span class="item"><span class="swatch" style="background:var(--series-sir)"></span>SIR</span>
+        <span class="item"><span class="swatch" style="background:var(--series-persist)"></span>Persistência</span>
+      </div>
+      <div class="facets" id="diracc-facets"></div>
+      <div class="takeaway">
+        <b>Persistência</b> "acerta" 91–97% no piso (repetir zero é trivialmente "certo" quando a música
+        já estava fora do chart) e <b>desaba para ~0%</b> quando só se conta o que ela de fato tenta prever.
+        GNN e SIR, que realmente modelam dinâmica, mantêm 55–73% nas duas leituras &mdash; é por isso que a leitura
+        on-chart passou a ser a principal.
+      </div>
+      <div class="mini-table-wrap">
+        <table>
+          <thead><tr><th>RMSE médio (k=1,2,4)</th><th>Completa</th><th>On-chart</th><th>Razão</th></tr></thead>
+          <tbody>
+            <tr><td>GNN</td><td>0.0362</td><td>0.1733</td><td>4.8×</td></tr>
+            <tr><td>SIR</td><td>0.0565</td><td>0.2504</td><td>4.4×</td></tr>
+            <tr><td>Persistência</td><td>0.0382</td><td>0.1687</td><td>4.4×</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- PANEL B — estatística correta -->
+  <section>
+    <div class="panel-head">
+      <span class="panel-tag">item 03 · estatística correta</span>
+      <h2>A unidade certa do teste é a música, não a previsão</h2>
+      <p class="panel-sub">
+        O Wilcoxon do Modo 2 pareava por origem de previsão (uma música contribui com dezenas de origens,
+        que não são observações independentes). Recomputado por música, a taxa de vitória da GNN sobre o SIR
+        se mantém dentro da faixa já reportada na dissertação.
+      </p>
+    </div>
+    <div class="card">
+      <div class="stat-pair" style="margin-bottom: 1.4rem;">
+        <div class="half old">
+          <span class="num">23.291</span>
+          <span class="label">pares por origem de previsão</span>
+          <span class="sub">unidade usada antes da correção</span>
+        </div>
+        <div class="arrow">→</div>
+        <div class="half new">
+          <span class="num">1.933</span>
+          <span class="label">músicas (pares reais)</span>
+          <span class="sub">unidade correta, usada agora</span>
+        </div>
+      </div>
+      <div class="chart-scroll">
+        <svg id="winrate-chart" viewBox="0 0 720 260" role="img" aria-label="Taxa de vitória da GNN sobre o SIR por célula, pareado por música"></svg>
+      </div>
+      <div class="takeaway">
+        Faixa sombreada = 64%&ndash;77%, a taxa de vitória já reportada na qualificação. As seis células
+        (2 charts × 3 horizontes), recomputadas com o pareamento correto, caem dentro dela: <b>o número
+        publicado estava certo, a descrição do teste no texto é que não batia com o código</b>. Já corrigida
+        em <code>resumo.tex</code>.
+      </div>
+    </div>
+  </section>
+
+  <!-- PANEL C — split regime -->
+  <section>
+    <div class="panel-head">
+      <span class="panel-tag">item 02 · regime de split parametrizado</span>
+      <h2>O split atual testa inteiramente sob pandemia</h2>
+      <p class="panel-sub">
+        Prefactor para o segundo regime de robustez. O código já aceita os dois; só o atual foi rodado até agora.
+      </p>
+    </div>
+    <div class="card">
+      <div class="timeline-wrap">
+        <div class="timeline-row">
+          <div class="timeline-row-head">
+            <span class="timeline-name">current</span>
+            <span class="timeline-status active">rodado, é o principal</span>
+          </div>
+          <div class="timeline-track">
+            <div class="seg train" style="left:0%; width:56.4%;">treino</div>
+            <div class="seg val" style="left:56.4%; width:9.6%;">val</div>
+            <div class="seg test pandemia" style="left:66%; width:34%;">teste · 100% pandemia</div>
+          </div>
+          <div class="timeline-years"><span>2017</span><span>2018</span><span>2019</span><span>2020</span><span>2021</span><span>2022</span></div>
+        </div>
+        <div class="timeline-row">
+          <div class="timeline-row-head">
+            <span class="timeline-name">pre_pandemia</span>
+            <span class="timeline-status pending">encanamento pronto, não rodado</span>
+          </div>
+          <div class="timeline-track">
+            <div class="seg train" style="left:0%; width:40%;">treino</div>
+            <div class="seg val" style="left:40%; width:10%;">val</div>
+            <div class="seg test" style="left:50%; width:10%;">teste</div>
+          </div>
+          <div class="timeline-years"><span>2017</span><span>2018</span><span>2019</span><span></span><span></span><span></span></div>
+        </div>
+      </div>
+      <div class="takeaway">
+        No regime <code>current</code>, o modelo aprende dinâmica quase toda pré-pandemia e é avaliado
+        inteiramente pós-pandemia, um deslocamento de distribuição que favorece a persistência por construção.
+        <code>pre_pandemia</code> é o teste de robustez que isola esse confundidor, mas ainda não foi executado.
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>fonte: results/phase3/summary.md · commit acd11b3</span>
+    <span>gerado 2026-08-18</span>
+  </footer>
+
+</main>
+
+<script>
+(function () {
+  const COLORS = {
+    gnn: getComputedStyle(document.documentElement).getPropertyValue('--series-gnn').trim(),
+    sir: getComputedStyle(document.documentElement).getPropertyValue('--series-sir').trim(),
+    persist: getComputedStyle(document.documentElement).getPropertyValue('--series-persist').trim(),
+  };
+
+  // ---- Panel A: directional accuracy, full vs on-chart, per chart type ----
+  const diracc = {
+    "Viral 50": {
+      categories: ["Completa", "On-chart"],
+      series: [
+        { key: "gnn", name: "GNN", values: [0.021, 0.612] },
+        { key: "sir", name: "SIR", values: [0.013, 0.549] },
+        { key: "persist", name: "Persistência", values: [0.972, 0.002] },
+      ],
+    },
+    "Top 200": {
+      categories: ["Completa", "On-chart"],
+      series: [
+        { key: "gnn", name: "GNN", values: [0.067, 0.727] },
+        { key: "sir", name: "SIR", values: [0.050, 0.653] },
+        { key: "persist", name: "Persistência", values: [0.911, 0.001] },
+      ],
+    },
+  };
+
+  function renderFacet(container, title, data) {
+    const W = 320, H = 230, padL = 34, padB = 34, padT = 14, padR = 10;
+    const plotW = W - padL - padR, plotH = H - padT - padB;
+    const groupGap = 28, barGap = 4;
+    const nCat = data.categories.length, nSer = data.series.length;
+    const groupW = (plotW - groupGap * (nCat - 1)) / nCat;
+    const barW = (groupW - barGap * (nSer - 1)) / nSer;
+
+    const wrap = document.createElement('div');
+    const h3 = document.createElement('p');
+    h3.className = 'facet-title';
+    h3.textContent = title;
+    wrap.appendChild(h3);
+
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', title + ': acerto direcional por modelo, completa vs on-chart');
+
+    // gridlines at 0, .25, .5, .75, 1.0
+    [0, 0.25, 0.5, 0.75, 1.0].forEach(function (v) {
+      const y = padT + plotH * (1 - v);
+      const line = document.createElementNS(svgNS, 'line');
+      line.setAttribute('x1', padL); line.setAttribute('x2', W - padR);
+      line.setAttribute('y1', y); line.setAttribute('y2', y);
+      line.setAttribute('class', 'grid-line');
+      svg.appendChild(line);
+      const lab = document.createElementNS(svgNS, 'text');
+      lab.setAttribute('x', padL - 6); lab.setAttribute('y', y + 3);
+      lab.setAttribute('text-anchor', 'end'); lab.setAttribute('class', 'axis-label');
+      lab.textContent = Math.round(v * 100) + '%';
+      svg.appendChild(lab);
+    });
+
+    data.categories.forEach(function (cat, ci) {
+      const gx = padL + ci * (groupW + groupGap);
+      data.series.forEach(function (s, si) {
+        const v = s.values[ci];
+        const bh = plotH * v;
+        const bx = gx + si * (barW + barGap);
+        const by = padT + plotH - bh;
+        const rect = document.createElementNS(svgNS, 'rect');
+        rect.setAttribute('x', bx); rect.setAttribute('y', by);
+        rect.setAttribute('width', barW); rect.setAttribute('height', Math.max(bh, 1));
+        rect.setAttribute('rx', 3);
+        rect.setAttribute('fill', COLORS[s.key]);
+        const t = document.createElementNS(svgNS, 'title');
+        t.textContent = s.name + ' · ' + cat + ': ' + Math.round(v * 100) + '%';
+        rect.appendChild(t);
+        svg.appendChild(rect);
+
+        const val = document.createElementNS(svgNS, 'text');
+        val.setAttribute('x', bx + barW / 2);
+        val.setAttribute('y', by - 4);
+        val.setAttribute('text-anchor', 'middle');
+        val.setAttribute('class', 'value-label');
+        val.textContent = Math.round(v * 100);
+        svg.appendChild(val);
+      });
+      const catLab = document.createElementNS(svgNS, 'text');
+      catLab.setAttribute('x', gx + groupW / 2);
+      catLab.setAttribute('y', H - padB + 16);
+      catLab.setAttribute('text-anchor', 'middle');
+      catLab.setAttribute('class', 'cat-label');
+      catLab.textContent = cat;
+      svg.appendChild(catLab);
+    });
+
+    wrap.appendChild(svg);
+    container.appendChild(wrap);
+  }
+
+  const facetsEl = document.getElementById('diracc-facets');
+  Object.keys(diracc).forEach(function (k) { renderFacet(facetsEl, k, diracc[k]); });
+
+  // ---- Panel B: win rate per cell, per-song pairing, with known-range band ----
+  (function () {
+    const cells = [
+      { label: "Viral 50 · k=1", v: 0.754 },
+      { label: "Top 200 · k=1", v: 0.689 },
+      { label: "Viral 50 · k=2", v: 0.771 },
+      { label: "Top 200 · k=2", v: 0.664 },
+      { label: "Viral 50 · k=4", v: 0.766 },
+      { label: "Top 200 · k=4", v: 0.649 },
+    ];
+    const svg = document.getElementById('winrate-chart');
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const W = 720, H = 260, padL = 40, padB = 44, padT = 16, padR = 16;
+    const plotW = W - padL - padR, plotH = H - padT - padB;
+    const bandLo = 0.64, bandHi = 0.77; // faixa já reportada na dissertação (resumo.tex), independente desta recomputação
+    const domainMax = 1.0;
+
+    function yFor(v) { return padT + plotH * (1 - v / domainMax); }
+
+    // reference band
+    const bandY = yFor(bandHi), bandH = yFor(bandLo) - yFor(bandHi);
+    const band = document.createElementNS(svgNS, 'rect');
+    band.setAttribute('x', padL); band.setAttribute('y', bandY);
+    band.setAttribute('width', plotW); band.setAttribute('height', bandH);
+    band.setAttribute('fill', 'var(--band-fill)');
+    svg.appendChild(band);
+    [bandLo, bandHi].forEach(function (v) {
+      const line = document.createElementNS(svgNS, 'line');
+      const y = yFor(v);
+      line.setAttribute('x1', padL); line.setAttribute('x2', W - padR);
+      line.setAttribute('y1', y); line.setAttribute('y2', y);
+      line.setAttribute('stroke', 'var(--band-line)'); line.setAttribute('stroke-dasharray', '3,3');
+      svg.appendChild(line);
+    });
+    const bandLab = document.createElementNS(svgNS, 'text');
+    bandLab.setAttribute('x', W - padR); bandLab.setAttribute('y', bandY - 5);
+    bandLab.setAttribute('text-anchor', 'end'); bandLab.setAttribute('class', 'axis-label');
+    bandLab.textContent = 'faixa já conhecida (64%–77%)';
+    svg.appendChild(bandLab);
+
+    [0, 0.25, 0.5, 0.75, 1.0].forEach(function (v) {
+      const y = yFor(v);
+      const line = document.createElementNS(svgNS, 'line');
+      line.setAttribute('x1', padL); line.setAttribute('x2', W - padR);
+      line.setAttribute('y1', y); line.setAttribute('y2', y);
+      line.setAttribute('class', 'grid-line');
+      svg.appendChild(line);
+      const lab = document.createElementNS(svgNS, 'text');
+      lab.setAttribute('x', padL - 6); lab.setAttribute('y', y + 3);
+      lab.setAttribute('text-anchor', 'end'); lab.setAttribute('class', 'axis-label');
+      lab.textContent = Math.round(v * 100) + '%';
+      svg.appendChild(lab);
+    });
+    const line50 = document.createElementNS(svgNS, 'line');
+    const y50 = yFor(0.5);
+    line50.setAttribute('x1', padL); line50.setAttribute('x2', W - padR);
+    line50.setAttribute('y1', y50); line50.setAttribute('y2', y50);
+    line50.setAttribute('stroke', 'var(--text-muted)'); line50.setAttribute('stroke-dasharray', '1,3');
+    svg.appendChild(line50);
+
+    const barGap = 18;
+    const barW = (plotW - barGap * (cells.length - 1)) / cells.length;
+    cells.forEach(function (c, i) {
+      const x = padL + i * (barW + barGap);
+      const y = yFor(c.v);
+      const h = padT + plotH - y;
+      const rect = document.createElementNS(svgNS, 'rect');
+      rect.setAttribute('x', x); rect.setAttribute('y', y);
+      rect.setAttribute('width', barW); rect.setAttribute('height', h);
+      rect.setAttribute('rx', 4);
+      rect.setAttribute('fill', 'var(--series-gnn)');
+      const t = document.createElementNS(svgNS, 'title');
+      t.textContent = c.label + ': GNN vence em ' + Math.round(c.v * 100) + '% das músicas';
+      rect.appendChild(t);
+      svg.appendChild(rect);
+
+      const val = document.createElementNS(svgNS, 'text');
+      val.setAttribute('x', x + barW / 2); val.setAttribute('y', y - 6);
+      val.setAttribute('text-anchor', 'middle'); val.setAttribute('class', 'value-label');
+      val.textContent = Math.round(c.v * 100) + '%';
+      svg.appendChild(val);
+
+      const lab = document.createElementNS(svgNS, 'text');
+      lab.setAttribute('x', x + barW / 2); lab.setAttribute('y', H - padB + 16);
+      lab.setAttribute('text-anchor', 'middle'); lab.setAttribute('class', 'cat-label');
+      lab.textContent = c.label;
+      svg.appendChild(lab);
+    });
+  })();
+})();
+</script>
