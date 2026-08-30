@@ -29,4 +29,5 @@ data/processed/*
 !data/processed/graph/
 data/processed/graph/*
 !data/processed/graph/hetero_full_*.pt
+!data/processed/graph/genre_attributes_*.parquet
 !data/processed/graph/node_id_map.json

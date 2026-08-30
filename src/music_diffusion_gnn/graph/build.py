@@ -34,6 +34,16 @@ _PROCESSED = _ROOT / "data" / "processed"
 GRAPH_DIR = _PROCESSED / "graph"
 
 
+def genre_attributes_path(split_regime: str = "current", out_dir: Path | None = None) -> Path:
+    """Path of the raw (pre log1p/z-score) genre attribute table for ``split_regime``.
+
+    Persisted next to the graph because the yearly MGD+ CSVs it comes from are not
+    versioned: without it, the table cannot be inspected where the graph is used
+    (the Colab notebooks clone only the processed artifacts).
+    """
+    return (Path(out_dir) if out_dir else GRAPH_DIR) / f"genre_attributes_{split_regime}.parquet"
+
+
 def graph_path(split_regime: str = "current", out_dir: Path | None = None) -> Path:
     """Path of the graph built for ``split_regime``.
 
@@ -69,6 +79,25 @@ def _load_songs_combined(root: Path) -> pd.DataFrame:
     else:
         logger.warning("MGDplus complete songs file not found: %s", complete_path)
         return base_songs
+
+
+def _save_genre_attributes(
+    train_years: list[int],
+    genre_id_map: dict[str, int],
+    split_regime: str,
+    out_dir: Path,
+) -> None:
+    """Persist the raw genre attribute table (recomputed: cheap, and keeps one formula)."""
+    from music_diffusion_gnn.data.loaders import load_artists_years, load_genre_network
+    from music_diffusion_gnn.graph.nodes import genre_attributes
+
+    attrs = genre_attributes(
+        load_genre_network(train_years), load_artists_years(train_years)
+    ).reindex(list(genre_id_map)).fillna(0.0)
+    attrs.index.name = "genre"
+    path = genre_attributes_path(split_regime, out_dir)
+    attrs.to_parquet(path)
+    logger.info("Saved: %s", path)
 
 
 def build_hetero(
@@ -120,6 +149,7 @@ def build_hetero(
 
     logger.info("Building genre nodes (train_years=%s)...", train_years)
     x_genre, genre_id_map = build_genre_nodes(artists_df, artist_id_map, train_years)
+    _save_genre_attributes(train_years, genre_id_map, split_regime, out_dir)
 
     # ------------------------------------------------------------------ #
     # 3. Build edges
