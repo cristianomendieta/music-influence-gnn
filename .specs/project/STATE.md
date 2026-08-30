@@ -280,6 +280,69 @@ de maior prioridade: ou o instrumento satura no `clamp`, ou o grafo não influen
 predição.
 
 
+## Diagnóstico da ablação zerada — fechado (2026-08-30)
+
+**Desfecho A, com hipótese C confirmada.** O `delta_rmse` exatamente zero de 2026-07-07
+tinha duas causas somadas, e a dominante era instrumental: `_predict_all` encodava a
+semana alvo, que `MusicDiffusionGNN.predict` nunca lê (ela não está na janela
+`[w−W, …, w−1]`). 0% das posições da janela chegavam ao GRU, a sequência era nula e `Δ`
+saía constante em 0,00320397 para as 98.186 amostras. Corrigido em `interpretability.py`
+(commit `2c645c6`). Sobre isso, o `clamp` satura: anula 76,9% da correção na leitura
+completa contra 3,6% no recorte on-chart.
+
+Relatório com todas as tabelas: [`docs/diagnostico-ablacao.md`](../../docs/diagnostico-ablacao.md).
+Artefatos brutos em `MyDrive/music-influence-gnn/item04_diagnostico/` (fora do git).
+
+**Achado P0 fechado.** `results/phase3/interpretability.parquet` mede uma constante:
+não é resultado, é artefato, e não entra na dissertação. A permutação por grupo de
+features tem o mesmo defeito.
+
+**Três achados novos, abertos:**
+
+- **Cotrajetória carrega todo o sinal.** Removê-la leva o RMSE on-chart de 0,1005 para
+  0,1938 (+93%). Os outros quatro tipos de aresta têm `delta_rmse` negativo: removê-los
+  **melhora** o modelo.
+- **Canal de gênero inerte (P1) — causa isolada em 2026-08-30.** Esvaziar as 9.866
+  arestas `cooccurs` não alterava nenhum embedding de `music` além do ruído de float
+  (3e−08). A sonda camada a camada mostrou que **não era falta de caminho**: era a
+  agregação. `SAGEConv` usa a média dos vizinhos, e a média da tabela de 530×32
+  parâmetros livres, i.i.d. centrada em zero, se cancela. Com os atributos estruturais
+  do ADR-0003 o sinal que chega em `music` fica ~83× maior. Ver
+  [`docs/sonda-canal-genero.md`](../../docs/sonda-canal-genero.md). Falta repetir a
+  medição com pesos treinados (item 21, seção 4 do notebook do item 05).
+- **Descasamento de densidade treino/avaliação (P1, afeta a Phase 6).** Treino com
+  `max_cotraj_edges = 30_000` por snapshot (`trainer.py:48`), avaliação com o grafo
+  completo (480k–664k arestas). Religar a cotrajetória ao acaso melhora o erro on-chart
+  (−0,0028), o que é adverso à tese mas confundido por esse descasamento: para o modelo,
+  um religamento aleatório se parece mais com o que ele viu no treino do que o grafo
+  completo. O protocolo da escada precisa fixar o mesmo orçamento nos dois lados.
+
+
+## Phase 5 — Gênero estrutural (item 05): código entregue em 2026-08-30
+
+Gênero deixou de ser tabela aprendida de 530×32 e passou a quatro atributos com fórmula
+derivados da rede gênero↔gênero ([ADR-0003](../../docs/adr/0003-atributos-de-genero-derivados.md)):
+`degree`, `weighted_degree`, `n_artists` (log1p + escore-z) e a bandeira
+`absent_from_network`. Fórmula em `graph/nodes.py::genre_attributes`.
+
+**Restrição causal implementada:** só os anos inteiramente contidos na janela de treino
+entram (`SplitRegime.train_years` → `current` 2017-2019, `pre_pandemia` 2017-2018), então
+**cada regime tem seu grafo**: `data/processed/graph/hetero_full_{regime}.pt`, resolvido
+por `graph.build.graph_path(regime)`. `hetero_full.pt` deixou de existir. `Avg_Popularity`
+e `Avg_Streams` não são lidas em lugar nenhum — saíram também do `edge_attr` de `cooccurs`,
+que passou de 4 para 2 colunas.
+
+C1–C9 verdes nos dois regimes. Suíte de testes verde (`tests/test_genre_features.py` novo).
+
+**Consequência:** todo checkpoint anterior a esta mudança é inválido — carrega
+`genre_emb.weight` e um encoder dimensionado para o gênero antigo. `model_io` recusa esses
+arquivos com mensagem explícita, e `tests/test_phase3_model_io.py` fica em skip até o
+re-treino.
+
+**Pendente (roda no Colab):** [`notebooks/item05_genero_estrutural_colab.ipynb`](../../notebooks/item05_genero_estrutural_colab.ipynb)
+— re-treino da config vencedora sobre o grafo reconstruído (referência a bater: `val_mse`
+0,000749 do grafo antigo) e a sonda do canal de gênero com pesos treinados.
+
 ## Deferred ideas
 
 - **Causalidade virality↔success** (Oliveira IEEE Access 2025): explorar como

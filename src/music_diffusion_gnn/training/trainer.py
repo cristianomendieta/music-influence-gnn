@@ -160,7 +160,6 @@ def train_one(
     g = g.to(device)
     model = MusicDiffusionGNN(
         g.metadata(),
-        n_genre=g["genre"].num_nodes,
         hidden=config.hidden,
         layers=config.layers,
         dropout=config.dropout,

@@ -81,7 +81,9 @@ def main(seed: int = 42, smoke: bool = False, split_regime: str = "current") -> 
     _banner("Step 1/5 — Load graph and timeseries")
     t0 = time.time()
 
-    g = torch.load(PROCESSED_GRAPH / "hetero_full.pt", weights_only=False)
+    from music_diffusion_gnn.graph.build import graph_path
+
+    g = torch.load(graph_path(split_regime, PROCESSED_GRAPH), weights_only=False)
     logger.info(f"Graph loaded [{_elapsed(t0)}]")
 
     t0 = time.time()
@@ -185,7 +187,7 @@ def main(seed: int = 42, smoke: bool = False, split_regime: str = "current") -> 
     # ------------------------------------------------------------------
     _banner("Step 4/5 — Evaluate best model (forecasting + retroactive)")
 
-    best_model = MusicDiffusionGNN(g.metadata(), n_genre=g["genre"].num_nodes,
+    best_model = MusicDiffusionGNN(g.metadata(),
                                    hidden=best_cfg.hidden,
                                    layers=best_cfg.layers, dropout=best_cfg.dropout,
                                    pop_bank=pop_bank)

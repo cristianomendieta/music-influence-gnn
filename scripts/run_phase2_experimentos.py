@@ -57,7 +57,9 @@ def main(mode: str, smoke: bool, resume: bool, seed: int, split_regime: str = "c
     log(f"device={DEVICE}  mode={mode}  smoke={smoke}  resume={resume}")
 
     # ---- dados ----
-    g = torch.load(GRAPH_DIR / "hetero_full.pt", weights_only=False).to(DEVICE)
+    from music_diffusion_gnn.graph.build import graph_path
+
+    g = torch.load(graph_path(split_regime, GRAPH_DIR), weights_only=False).to(DEVICE)
     ts = pd.read_parquet(ROOT / "data" / "processed" / "timeseries.parquet")
     weekly = aggregate_weekly(ts)
     splits_df = temporal_split(weekly, regime=split_regime)
@@ -159,7 +161,7 @@ def main(mode: str, smoke: bool, resume: bool, seed: int, split_regime: str = "c
     log("avaliando melhor modelo (val forecasting + retroactive + test held-out)...")
     s = samples_by_W[best_cfg.W]
     tr, va, te = s["train"], s["val"], s["test"]
-    model = MusicDiffusionGNN(g.metadata(), n_genre=g["genre"].num_nodes,
+    model = MusicDiffusionGNN(g.metadata(),
                               hidden=best_cfg.hidden, layers=best_cfg.layers,
                               dropout=best_cfg.dropout)
     model.load_state_dict(best_state)

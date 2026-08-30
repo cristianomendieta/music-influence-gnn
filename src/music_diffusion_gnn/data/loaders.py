@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import ast
+from collections.abc import Iterable
 from pathlib import Path
 
 import pandas as pd
@@ -117,15 +118,50 @@ def load_artists(path: Path | None = None) -> pd.DataFrame:
     return df
 
 
-def load_genre_network(year: int | None = None, path: Path | None = None) -> pd.DataFrame:
-    """Load genre co-occurrence network edges.
+def load_genre_network(
+    years: int | Iterable[int] | None = None, path: Path | None = None
+) -> pd.DataFrame:
+    """Load genre↔genre co-occurrence edges: ``Source | Target | Weight``.
 
-    If year is None, loads all years and concatenates.
+    These CSVs are **comma**-separated (unlike the rest of MGD+, which is
+    tab-separated). ``years`` selects which yearly files to concatenate
+    (all of them when ``None``).
+
+    ``Avg_Popularity`` and ``Avg_Streams`` are never read: they aggregate the
+    whole 2017-2021 window and leak the target (ADR-0003).
     """
+    cols = ["Source", "Target", "Weight"]
     if path is not None:
-        return pd.read_csv(path, sep="\t")
+        return pd.read_csv(path, usecols=cols)
     base = DATA / "genre_network"
-    if year is not None:
-        return pd.read_csv(base / f"br-genre_network-{year}.csv", sep="\t")
-    files = sorted(base.glob("br-genre_network-*.csv"))
-    return pd.concat([pd.read_csv(f, sep="\t") for f in files], ignore_index=True)
+    if years is None:
+        files = sorted(base.glob("br-genre_network-*.csv"))
+    else:
+        if isinstance(years, int):
+            years = [years]
+        files = [base / f"br-genre_network-{y}.csv" for y in years]
+    return pd.concat([pd.read_csv(f, usecols=cols) for f in files], ignore_index=True)
+
+
+def load_artists_years(years: Iterable[int]) -> pd.DataFrame:
+    """Load the per-year artist files for ``years`` (artist_id, genres).
+
+    One row per artist that charted in that year; an artist appearing in more
+    than one year is kept once (their genre tags do not change between files).
+    Used by the genre attributes, which must see only the training years.
+    """
+    df = pd.concat(
+        [
+            pd.read_csv(
+                DATA / "artists" / f"br-artists-{y}.csv",
+                sep="\t",
+                usecols=["artist_id", "genres"],
+            )
+            for y in years
+        ],
+        ignore_index=True,
+    ).drop_duplicates("artist_id")
+    df["genres_list"] = df["genres"].apply(
+        lambda v: ast.literal_eval(v) if isinstance(v, str) else []
+    )
+    return df

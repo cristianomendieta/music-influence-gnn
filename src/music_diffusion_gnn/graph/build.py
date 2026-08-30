@@ -21,6 +21,7 @@ from music_diffusion_gnn.graph.edges import (
     build_performs,
 )
 from music_diffusion_gnn.graph.nodes import (
+    GENRE_FEATURE_NAMES,
     build_artist_nodes,
     build_genre_nodes,
     build_music_nodes,
@@ -30,6 +31,17 @@ logger = logging.getLogger(__name__)
 
 _ROOT = Path(__file__).resolve().parents[3]
 _PROCESSED = _ROOT / "data" / "processed"
+GRAPH_DIR = _PROCESSED / "graph"
+
+
+def graph_path(split_regime: str = "current", out_dir: Path | None = None) -> Path:
+    """Path of the graph built for ``split_regime``.
+
+    Genre node attributes are derived from the training years only (ADR-0003),
+    so each split regime has its own graph file — reusing one across regimes
+    would leak future years into the pre-pandemia split.
+    """
+    return (Path(out_dir) if out_dir else GRAPH_DIR) / f"hetero_full_{split_regime}.pt"
 
 
 def _load_songs_combined(root: Path) -> pd.DataFrame:
@@ -61,12 +73,19 @@ def _load_songs_combined(root: Path) -> pd.DataFrame:
 
 def build_hetero(
     out_dir: Path = Path("data/processed/graph"),
+    split_regime: str = "current",
 ) -> HeteroData:
     """Full Phase 1 pipeline: load → build nodes/edges → assemble → validate → persist.
 
     Validates criteria C1-C7 inline; raises AssertionError on violation.
-    Persists hetero_full.pt and node_id_map.json to out_dir.
+    Persists ``hetero_full_{split_regime}.pt`` and node_id_map.json to out_dir.
+
+    ``split_regime`` selects the training years fed to the genre attributes
+    (ADR-0003); everything else in the graph is regime-independent.
     """
+    from music_diffusion_gnn.training.dataset import get_split_regime
+
+    train_years = get_split_regime(split_regime).train_years
     out_dir = Path(out_dir)
     if not out_dir.is_absolute():
         out_dir = _ROOT / out_dir
@@ -99,8 +118,8 @@ def build_hetero(
         artists_df, music_id_map, charts_df, songs_df
     )
 
-    logger.info("Building genre nodes...")
-    x_genre, genre_id_map = build_genre_nodes(artists_df, artist_id_map)
+    logger.info("Building genre nodes (train_years=%s)...", train_years)
+    x_genre, genre_id_map = build_genre_nodes(artists_df, artist_id_map, train_years)
 
     # ------------------------------------------------------------------ #
     # 3. Build edges
@@ -130,6 +149,9 @@ def build_hetero(
 
     g["genre"].x = x_genre
     g["genre"].genre_name = list(genre_id_map.keys())
+    g["genre"].feature_names = GENRE_FEATURE_NAMES
+    g["genre"].train_years = train_years
+    g.split_regime = split_regime
 
     # (artist, performs, music) — directed
     g["artist", "performs", "music"].edge_index = perf["edge_index"]
@@ -157,7 +179,7 @@ def build_hetero(
     # ------------------------------------------------------------------ #
     # 6. Persist artifacts
     # ------------------------------------------------------------------ #
-    pt_path = out_dir / "hetero_full.pt"
+    pt_path = graph_path(split_regime, out_dir)
     torch.save(g, pt_path)
     logger.info("Saved: %s", pt_path)
 
@@ -210,6 +232,11 @@ def _validate(
     # C3
     assert abs(n_genre - 530) <= 10, (
         f"C3 FAIL: n_genre={n_genre}, expected 530±10"
+    )
+    # C3b — genre attributes, not a learned table (ADR-0003)
+    assert g["genre"].x.shape[1] == len(GENRE_FEATURE_NAMES), (
+        f"C3b FAIL: genre features have {g['genre'].x.shape[1]} columns, "
+        f"expected {len(GENRE_FEATURE_NAMES)}: {GENRE_FEATURE_NAMES}"
     )
 
     # C4 — subset ⊆ music nodes

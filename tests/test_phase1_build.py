@@ -20,7 +20,9 @@ SUBSET_PATH = ROOT / "data" / "processed" / "subset_ids.json"
 @pytest.fixture(scope="module")
 def hetero_graph():
     """Load or build the heterogeneous graph once for all tests in this module."""
-    pt_path = PROCESSED_GRAPH / "hetero_full.pt"
+    from music_diffusion_gnn.graph.build import graph_path
+
+    pt_path = graph_path("current", PROCESSED_GRAPH)
     if pt_path.exists():
         return torch.load(pt_path, weights_only=False)
     # Build if not cached

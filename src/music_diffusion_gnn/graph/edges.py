@@ -244,7 +244,7 @@ def build_cotrajectory(
     if not all_edges:
         return {
             "edge_index": torch.zeros((2, 0), dtype=torch.long),
-            "edge_attr": torch.zeros((0, 4), dtype=torch.float32),
+            "edge_attr": torch.zeros((0, 2), dtype=torch.float32),
         }
 
     arr = np.array(all_edges, dtype=np.float64)
@@ -270,12 +270,13 @@ def build_cooccurs(
     first_seen_week = (first_year - 2017) * 52 (proxy: week-1 of the year).
     Attributes updated with snapshot of the most recent year for each pair.
 
-    edge_attr columns: [weight, avg_popularity, avg_streams, first_seen_week]
+    edge_attr columns: [weight, first_seen_week]. Avg_Popularity/Avg_Streams are
+    never read: they aggregate the whole 2017-2021 window and leak (ADR-0003).
     """
     if data_dir is None:
         data_dir = _DATA / "genre_network"
 
-    # pair -> {first_seen_week, weight, avg_pop, avg_streams}
+    # pair -> {first_seen_week, weight}
     pair_attrs: dict[tuple[int, int], dict] = {}
 
     for year in range(year_range[0], year_range[1] + 1):
@@ -284,8 +285,8 @@ def build_cooccurs(
             logger.warning("Genre network file missing: %s", fpath)
             continue
 
-        # Genre network CSVs use comma separator
-        df = pd.read_csv(fpath)
+        # Genre network CSVs use comma separator; Avg_* columns are off-limits
+        df = pd.read_csv(fpath, usecols=["Source", "Target", "Weight"])
         fsw_year = (year - 2017) * 52
 
         for row in df.itertuples(index=False):
@@ -298,8 +299,6 @@ def build_cooccurs(
             dst_idx = genre_id_map[dst_name]
 
             weight = float(getattr(row, "Weight", 1.0))
-            avg_pop = float(getattr(row, "Avg_Popularity", 0.0))
-            avg_streams = float(getattr(row, "Avg_Streams", 0.0))
 
             # Both directions (undirected)
             for key in [(src_idx, dst_idx), (dst_idx, src_idx)]:
@@ -307,19 +306,15 @@ def build_cooccurs(
                     pair_attrs[key] = {
                         "first_seen_week": fsw_year,
                         "weight": weight,
-                        "avg_pop": avg_pop,
-                        "avg_streams": avg_streams,
                     }
                 else:
                     # Update to latest snapshot
                     pair_attrs[key]["weight"] = weight
-                    pair_attrs[key]["avg_pop"] = avg_pop
-                    pair_attrs[key]["avg_streams"] = avg_streams
 
     if not pair_attrs:
         return {
             "edge_index": torch.zeros((2, 0), dtype=torch.long),
-            "edge_attr": torch.zeros((0, 4), dtype=torch.float32),
+            "edge_attr": torch.zeros((0, 2), dtype=torch.float32),
         }
 
     # Deterministic ordering
@@ -327,7 +322,7 @@ def build_cooccurs(
     srcs = [k[0] for k, _ in sorted_edges]
     dsts = [k[1] for k, _ in sorted_edges]
     attrs = [
-        [v["weight"], v["avg_pop"], v["avg_streams"], v["first_seen_week"]]
+        [v["weight"], v["first_seen_week"]]
         for _, v in sorted_edges
     ]
 

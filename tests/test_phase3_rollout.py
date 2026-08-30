@@ -8,7 +8,9 @@ import pytest
 import torch
 
 ROOT = Path(__file__).resolve().parent.parent
-GRAPH_PATH = ROOT / "data" / "processed" / "graph" / "hetero_full.pt"
+from music_diffusion_gnn.graph.build import graph_path
+
+GRAPH_PATH = graph_path("current")
 TS_PATH = ROOT / "data" / "processed" / "timeseries.parquet"
 NMAP_PATH = ROOT / "data" / "processed" / "graph" / "node_id_map.json"
 
@@ -43,7 +45,6 @@ def fresh_model(graph, pop_bank):
 
     model = MusicDiffusionGNN(
         graph.metadata(),
-        n_genre=graph["genre"].num_nodes,
         hidden=16,
         layers=1,
         dropout=0.0,

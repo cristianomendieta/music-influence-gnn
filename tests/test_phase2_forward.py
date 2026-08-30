@@ -8,7 +8,9 @@ import pytest
 import torch
 
 ROOT = Path(__file__).resolve().parent.parent
-GRAPH_PATH = ROOT / "data" / "processed" / "graph" / "hetero_full.pt"
+from music_diffusion_gnn.graph.build import graph_path
+
+GRAPH_PATH = graph_path("current")
 TS_PATH    = ROOT / "data" / "processed" / "timeseries.parquet"
 NMAP_PATH  = ROOT / "data" / "processed" / "graph" / "node_id_map.json"
 
@@ -50,7 +52,7 @@ def test_output_range(graph, train_samples):
     from music_diffusion_gnn.models.diffusion_gnn import MusicDiffusionGNN
     from music_diffusion_gnn.training.trainer import _distinct_window_weeks
 
-    model = MusicDiffusionGNN(graph.metadata(), n_genre=graph["genre"].num_nodes, hidden=64, layers=2, dropout=0.0)
+    model = MusicDiffusionGNN(graph.metadata(), hidden=64, layers=2, dropout=0.0)
     model.eval()
 
     batch = train_samples[:8]
@@ -72,7 +74,7 @@ def test_param_count(graph):
     """Largest grid config (hidden=128, layers=3) must have 50K–500K params."""
     from music_diffusion_gnn.models.diffusion_gnn import MusicDiffusionGNN
 
-    model = MusicDiffusionGNN(graph.metadata(), n_genre=graph["genre"].num_nodes, hidden=128, layers=3, dropout=0.2)
+    model = MusicDiffusionGNN(graph.metadata(), hidden=128, layers=3, dropout=0.2)
     # Warm-up to initialize lazy SAGE params
     from music_diffusion_gnn.graph.temporal import mask_until
     snap = mask_until(graph, 10)
@@ -92,7 +94,7 @@ def test_end_to_end_pipeline(graph, train_samples):
     from music_diffusion_gnn.models.diffusion_gnn import MusicDiffusionGNN
     from music_diffusion_gnn.training.trainer import _distinct_window_weeks
 
-    model = MusicDiffusionGNN(graph.metadata(), n_genre=graph["genre"].num_nodes, hidden=64, layers=2, dropout=0.0)
+    model = MusicDiffusionGNN(graph.metadata(), hidden=64, layers=2, dropout=0.0)
     model.eval()
 
     # Use different batch sizes
@@ -118,7 +120,7 @@ def test_pop_injection_forward_runs(graph, train_samples, pop_bank):
     from music_diffusion_gnn.models.diffusion_gnn import MusicDiffusionGNN
     from music_diffusion_gnn.training.trainer import _distinct_window_weeks
 
-    model = MusicDiffusionGNN(graph.metadata(), n_genre=graph["genre"].num_nodes,
+    model = MusicDiffusionGNN(graph.metadata(),
                               hidden=64, layers=2, dropout=0.0, pop_bank=pop_bank)
     model.eval()
     batch = train_samples[:8]
@@ -136,7 +138,7 @@ def test_residual_starts_at_persistence(graph, train_samples, pop_bank):
     from music_diffusion_gnn.models.diffusion_gnn import MusicDiffusionGNN
     from music_diffusion_gnn.training.trainer import _distinct_window_weeks
 
-    model = MusicDiffusionGNN(graph.metadata(), n_genre=graph["genre"].num_nodes,
+    model = MusicDiffusionGNN(graph.metadata(),
                               hidden=64, layers=2, dropout=0.0, pop_bank=pop_bank)
     model.eval()
     batch = train_samples[:16]

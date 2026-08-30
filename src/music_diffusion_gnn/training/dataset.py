@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -41,6 +42,20 @@ class SplitRegime:
     val_end_week: int
     test_start_week: int
     test_end_week: int | None
+
+    @property
+    def train_years(self) -> list[int]:
+        """Calendar years fully contained in the training window.
+
+        The MGD+ genre network and artist files are yearly, so a year is only
+        usable for node attributes when *all* of it is training data
+        (ADR-0003). Dec-28 is always in the last ISO week of its year, so it
+        is the right probe for "the whole year ends before the boundary".
+        """
+        return [
+            y for y in range(2017, 2022)
+            if week_index(date(y, 12, 28)) <= self.train_end_week
+        ]
 
 
 SPLIT_REGIMES: dict[str, SplitRegime] = {

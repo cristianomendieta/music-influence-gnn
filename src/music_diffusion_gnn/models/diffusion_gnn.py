@@ -65,20 +65,16 @@ class MusicDiffusionGNN(nn.Module):
     def __init__(
         self,
         metadata: tuple,
-        n_genre: int,
         hidden: int = 128,
         layers: int = 3,
         dropout: float = 0.2,
-        genre_dim: int = 32,
         pop_bank: Tensor | None = None,
     ) -> None:
         super().__init__()
         self.hidden = hidden
-        # Genres carry no descriptive attributes in the dataset, so they are
-        # represented by a learnable embedding optimized end-to-end with the
-        # rest of the model (registered here so it enters model.parameters()).
-        self.genre_emb = nn.Embedding(n_genre, genre_dim)
-        nn.init.normal_(self.genre_emb.weight, mean=0.0, std=0.1)
+        # Genre nodes carry structural attributes derived from the genre↔genre
+        # network of the training years (ADR-0003). The 530×32 learned table
+        # they replaced is gone: genre features now come from the graph itself.
         self.encoder = HeteroSpatialEncoder(metadata, hidden=hidden, layers=layers, dropout=dropout)
         self.head = TemporalHead(hidden=hidden, dropout=dropout)
         # Per-week popularity (n_weeks, N_music, 2); registered as a buffer so it
@@ -114,16 +110,15 @@ class MusicDiffusionGNN(nn.Module):
         # Model's own device (its parameters), authoritative regardless of what
         # device `g` happens to carry — callers are not required to have moved
         # the graph themselves (fragile across PyG versions/in-place semantics).
-        device = self.genre_emb.weight.device
+        # The head has eagerly-initialised parameters (the encoder's SAGEConv
+        # ones are lazy), so it is the reliable place to read the device from.
+        device = next(self.head.parameters()).device
         for w in set(weeks):
             snap = mask_until(g, w)
             if max_cotraj_edges is not None:
                 snap = _subsample_cotraj(snap, max_cotraj_edges)
             x_dict = {k: v.to(device) for k, v in snap.x_dict.items()}
             edge_index_dict = {k: v.to(device) for k, v in snap.edge_index_dict.items()}
-            # Override the graph's (unused) static genre features with the
-            # learnable embedding so genre identity is trained end-to-end.
-            x_dict["genre"] = self.genre_emb.weight
             # R1: inject the week-w popularity (2 chart channels) as dynamic music
             # node features so it diffuses through the influence graph. w ≤ target-1,
             # so this is strictly past information (no leakage).

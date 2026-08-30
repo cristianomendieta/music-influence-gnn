@@ -1,9 +1,11 @@
 """Phase 1 orchestrator — build HeteroGraph, stats, smoke-test, C1-C9 checklist.
 
 Usage:
-    python scripts/run_phase1.py [--force]
+    python scripts/run_phase1.py [--force] [--split-regime current|pre_pandemia]
 
---force : rebuild even if hetero_full.pt already exists
+--force         : rebuild even if the graph file already exists
+--split-regime  : which training years feed the genre attributes (ADR-0003);
+                  each regime gets its own hetero_full_{regime}.pt
 """
 from __future__ import annotations
 
@@ -43,7 +45,7 @@ def _check(criterion: str, ok: bool, detail: str = "") -> bool:
     return ok
 
 
-def main(force: bool = False) -> int:
+def main(force: bool = False, split_regime: str = "current") -> int:
     t_total = time.time()
     PROCESSED_GRAPH.mkdir(parents=True, exist_ok=True)
     RESULTS.mkdir(parents=True, exist_ok=True)
@@ -54,13 +56,15 @@ def main(force: bool = False) -> int:
     # Step 1 — Build graph
     # ------------------------------------------------------------------ #
     _banner("Step 1/3 — Build HeteroData")
-    pt_path = PROCESSED_GRAPH / "hetero_full.pt"
+    from music_diffusion_gnn.graph.build import graph_path
+
+    pt_path = graph_path(split_regime, PROCESSED_GRAPH)
 
     if force or not pt_path.exists():
         from music_diffusion_gnn.graph.build import build_hetero
         t0 = time.time()
         try:
-            g = build_hetero(PROCESSED_GRAPH)
+            g = build_hetero(PROCESSED_GRAPH, split_regime=split_regime)
             print(f"  Build complete [{_elapsed(t0)}]")
         except AssertionError as exc:
             print(f"\033[91m  BUILD FAILED: {exc}\033[0m")
@@ -219,7 +223,7 @@ def main(force: bool = False) -> int:
         print(f"\033[91m  SOME CRITERIA FAILED  [{total_elapsed}]\033[0m")
     print(f"{'='*60}")
     print(f"  Artifacts:")
-    print(f"    {PROCESSED_GRAPH / 'hetero_full.pt'}")
+    print(f"    {pt_path}")
     print(f"    {PROCESSED_GRAPH / 'node_id_map.json'}")
     print(f"    {RESULTS / 'stats.md'}")
     print(f"    {RESULTS / 'degree_distributions.png'}")
@@ -230,5 +234,8 @@ def main(force: bool = False) -> int:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Phase 1: build heterogeneous graph")
     parser.add_argument("--force", action="store_true", help="Rebuild even if cached")
+    parser.add_argument("--split-regime", default="current",
+                        choices=["current", "pre_pandemia"],
+                        help="Training years for the genre attributes (ADR-0003)")
     args = parser.parse_args()
-    sys.exit(main(force=args.force))
+    sys.exit(main(force=args.force, split_regime=args.split_regime))

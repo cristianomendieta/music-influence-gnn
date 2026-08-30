@@ -13,6 +13,8 @@ from torch import Tensor
 
 logger = logging.getLogger(__name__)
 
+GENRE_FEATURE_NAMES = ["degree", "weighted_degree", "n_artists", "absent_from_network"]
+
 ACOUSTIC_COLS = [
     "acousticness", "danceability", "energy", "instrumentalness",
     "liveness", "loudness", "speechiness", "valence", "tempo",
@@ -227,16 +229,69 @@ def build_artist_nodes(
 # T5 — Genre nodes
 # ---------------------------------------------------------------------------
 
+def genre_attributes(
+    net: pd.DataFrame, artists_years: pd.DataFrame
+) -> pd.DataFrame:
+    """Structural genre attributes from the genre↔genre network (ADR-0003).
+
+    Args:
+        net: ``Source | Target | Weight`` rows, restricted to the training years.
+        artists_years: artist rows (``artist_id``, ``genres_list``) of the same years.
+
+    Returns a DataFrame indexed by genre with:
+        degree           — number of distinct genres it co-occurs with
+        weighted_degree  — sum of the co-occurrence weights on those edges
+        n_artists        — distinct artists tagged with the genre
+
+    Self-loops (a genre "co-occurring with itself") describe no relation and are
+    dropped; the yearly files are then aggregated per pair (weights summed)
+    *before* counting, so a neighbour present in two years counts once in degree.
+    """
+    net = net[net["Source"] != net["Target"]]
+    net = net.groupby(["Source", "Target"], as_index=False)["Weight"].sum()
+
+    degree = pd.concat([net["Source"], net["Target"]]).value_counts().rename("degree")
+    weighted_degree = (
+        pd.concat([net.groupby("Source")["Weight"].sum(), net.groupby("Target")["Weight"].sum()])
+        .groupby(level=0).sum()
+        .rename("weighted_degree")
+    )
+    n_artists = (
+        artists_years.explode("genres_list").dropna(subset=["genres_list"])
+        .groupby("genres_list")["artist_id"].nunique()
+        .rename("n_artists")
+    )
+
+    return pd.concat([degree, weighted_degree, n_artists], axis=1).fillna(0.0)
+
+
 def build_genre_nodes(
     artists_df: pd.DataFrame,
     artist_id_map: dict[str, int],
+    train_years: list[int],
 ) -> tuple[Tensor, dict[str, int]]:
-    """Build genre node embeddings (random init) and id-map.
+    """Build genre node features and id-map.
+
+    Args:
+        artists_df: all-time artist table (defines the genre universe).
+        artist_id_map: artists kept in the graph.
+        train_years: calendar years inside the training window; only these
+            years of the genre network / artist files may be read (ADR-0003).
 
     Returns:
-        x_genre: float32 Tensor (N_g, 32) — random normal(0, 0.1), seed=0
+        x_genre: float32 Tensor (N_g, 4) — see ``GENRE_FEATURE_NAMES``
         genre_id_map: dict genre_name -> index (sorted alphabetically)
+
+    Feature columns (4), replacing the 530×32 learned table of the qualification
+    (ADR-0003). Columns 0-2 are log1p'd (heavy-tailed counts) then z-scored:
+        0: degree
+        1: weighted_degree
+        2: n_artists
+        3: absent_from_network — 1 when the genre has no edge in the training
+           years (its counts are then a structural zero, not a measurement)
     """
+    from music_diffusion_gnn.data.loaders import load_artists_years, load_genre_network
+
     # Genre universe = union of genres_list for artists in artist_id_map
     if "genres_list" not in artists_df.columns:
         artists_df = artists_df.copy()
@@ -250,11 +305,22 @@ def build_genre_nodes(
 
     sorted_genres = sorted(all_genres)
     genre_id_map: dict[str, int] = {g: i for i, g in enumerate(sorted_genres)}
-    N_g = len(sorted_genres)
 
-    torch.manual_seed(0)
-    x_genre = torch.empty(N_g, 32).normal_(0, 0.1)
+    attrs = genre_attributes(
+        load_genre_network(train_years), load_artists_years(train_years)
+    ).reindex(sorted_genres)
 
-    logger.info("Genre nodes: N=%d", N_g)
+    absent = attrs["degree"].isna().values.astype(np.float32)
+    counts = attrs[GENRE_FEATURE_NAMES[:3]].fillna(0.0).values.astype(np.float64)
+    x = np.concatenate(
+        [_zscore(np.log1p(counts)).astype(np.float32), absent[:, None]], axis=1
+    )
 
-    return x_genre, genre_id_map
+    assert not np.isnan(x).any(), "NaN found in genre node features"
+
+    logger.info(
+        "Genre nodes: N=%d, train_years=%s, absent_from_network=%.1f%%",
+        len(sorted_genres), train_years, 100 * absent.mean(),
+    )
+
+    return torch.tensor(x, dtype=torch.float32), genre_id_map

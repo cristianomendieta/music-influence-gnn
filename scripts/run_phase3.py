@@ -37,7 +37,7 @@ RESULTS = ROOT / "results" / "phase3"
 RESULTS_P0 = ROOT / "results" / "phase0"
 CKPT = ROOT / "results" / "phase2_experimentos_v2" / "grid_best_model.pt"
 TS_PATH = ROOT / "data" / "processed" / "timeseries.parquet"
-GRAPH_PATH = ROOT / "data" / "processed" / "graph" / "hetero_full.pt"
+GRAPH_DIR = ROOT / "data" / "processed" / "graph"
 NMAP_PATH = ROOT / "data" / "processed" / "graph" / "node_id_map.json"
 
 _MAX_WEEK = 260
@@ -487,8 +487,10 @@ def main() -> None:
     # ------------------------------------------------------------------ #
     _step("R0/A — Load timeseries + graph")
     t0 = time.time()
+    from music_diffusion_gnn.graph.build import graph_path
+
     ts_df = pd.read_parquet(TS_PATH)
-    g = torch.load(GRAPH_PATH, weights_only=False)
+    g = torch.load(graph_path(args.split_regime, GRAPH_DIR), weights_only=False)
     print(f"  Loaded: {ts_df.shape} rows, {g['music'].num_nodes} music nodes  [{_elapsed(t0)}]")
 
     from music_diffusion_gnn.training.dataset import aggregate_weekly, build_pop_bank

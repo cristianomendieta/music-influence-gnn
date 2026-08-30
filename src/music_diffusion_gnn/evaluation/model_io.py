@@ -38,7 +38,6 @@ def load_grid_best_model(
     ck = torch.load(ckpt_path, map_location=device, weights_only=False)
     model = MusicDiffusionGNN(
         g.metadata(),
-        n_genre=g["genre"].num_nodes,
         hidden=ck["hidden"],
         layers=ck["layers"],
         dropout=ck["dropout"],
@@ -49,6 +48,14 @@ def load_grid_best_model(
     ckpt_pop_bank = sd.get("pop_bank")
     sd = dict(sd)
     sd.pop("pop_bank", None)
+
+    if "genre_emb.weight" in sd:
+        raise ValueError(
+            f"{ckpt_path} is a pre-ADR-0003 checkpoint: it carries the 530×32 learned "
+            "genre table, which the model no longer has (genres now come from the graph "
+            "as structural attributes). Its encoder weights are shaped for the old "
+            "genre dimension too — the model has to be retrained, not adapted."
+        )
 
     if ckpt_pop_bank is not None and pop_bank_regen is not None:
         if ckpt_pop_bank.shape != pop_bank_regen.shape:
