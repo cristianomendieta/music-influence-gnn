@@ -10,13 +10,13 @@ Este ticket bloqueia o marco inteiro: nenhum treino novo antes do veredito.
 
 **Blocked by:** 01 (o diagnóstico precisa repetir a ablação sob recorte on-chart)
 
-**Status:** ready-for-agent
+**Status:** done (2026-08-30)
 
-- [ ] Quantifica, no checkpoint atual, quanto da predição vem de `y_prev` e quanto de `Δ`
-- [ ] Mostra se as predições diferem com e sem grafo **antes** do clamp
-- [ ] Reporta a fração de amostras em que o clamp está ativo
-- [ ] Repete a ablação por tipo de aresta sob recorte on-chart
-- [ ] Conclui explicitamente por desfecho A ou B, com o número que sustenta a conclusão
+- [x] Quantifica, no checkpoint atual, quanto da predição vem de `y_prev` e quanto de `Δ`
+- [x] Mostra se as predições diferem com e sem grafo **antes** do clamp
+- [x] Reporta a fração de amostras em que o clamp está ativo
+- [x] Repete a ablação por tipo de aresta sob recorte on-chart
+- [x] Conclui explicitamente por desfecho A ou B, com o número que sustenta a conclusão
 
 ---
 
@@ -36,3 +36,24 @@ com cache entre semanas alvo). 12 testes verdes.
 Instrumento do veredito: `notebooks/item04_diagnostico_saturacao_colab.ipynb`, autocontido
 (reimplementa a predição, não depende da correção estar no `main`), para rodar no Colab GPU.
 Mede as três hipóteses e conclui por A, B ou A-parcial com o número que sustenta.
+
+---
+
+## Resultado (2026-08-30) — desfecho A, hipótese C confirmada
+
+Rodado no Colab T4, checkpoint `W12_h128_l3_lr5e-04`, regime `current`, 98.186 amostras
+sobre 1.955 músicas (4,6% on-chart). Relatório completo com todas as tabelas em
+[`docs/diagnostico-ablacao.md`](../../../docs/diagnostico-ablacao.md).
+
+- **C confirmada.** O harness antigo encontrava 0% das posições da janela no banco e
+  devolvia `Δ` constante em 0,00320397 para todas as amostras; a montagem correta dá
+  36.314 valores distintos. A ablação de jul/2026 não mediu o grafo.
+- **A confirmada.** O `clamp` está ativo em 82,8% das amostras na leitura completa e em
+  5,3% no recorte on-chart; anula 76,9% contra 3,6% da correção estrutural. O efeito da
+  ablação de `performs` é 26 vezes maior on-chart do que na leitura completa.
+- **Ablação refeita:** `cotrajectory` responde por todo o sinal (`delta_rmse` on-chart
+  +0,0933, RMSE 0,1005 → 0,1938). Os outros quatro tipos têm `delta_rmse` negativo.
+
+Desdobramentos: item **21** (canal de gênero inerte, bloqueia 05), nota no item **08**
+(o religamento aleatório melhora o erro) e no item **09** (harness corrigido, permutação
+de features a refazer).

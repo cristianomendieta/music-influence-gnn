@@ -31,9 +31,10 @@ estão em `results/` e no capítulo de resultados.
 O marco atual submete a tese a teste. Entram na comparação um baseline neural sem
 grafo, a mesma GNN sobre um grafo com arestas embaralhadas, um segundo split
 pré-pandemia, três seeds por modelo e o recorte on-chart como leitura principal.
-Antes disso há um bloqueador: a ablação por tipo de aresta devolveu variação de erro
-exatamente zero, e é preciso saber se o instrumento saturou ou se o grafo realmente
-não influencia a predição.
+O bloqueador que segurava o marco foi fechado em 2026-08-30: a ablação por tipo de
+aresta devolvia variação de erro exatamente zero porque o harness nunca entregava os
+embeddings ao modelo, e o `clamp` satura por cima disso na leitura completa. Números e
+consequências em [docs/diagnostico-ablacao.md](docs/diagnostico-ablacao.md).
 
 ## Estrutura
 

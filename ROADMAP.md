@@ -29,18 +29,31 @@ qualquer número, em [ADR-0001](docs/adr/0001-precompromisso-de-falseamento.md).
 | 5 | Entra um **segundo split, inteiramente pré-pandemia**, como checagem de robustez. O split atual testa 100% em período de pandemia |
 | 6 | 3 seeds por modelo, IC bootstrap sobre a **diferença**, Wilcoxon reagregado por música, correção de Holm |
 
-## O bloqueador
+## O bloqueador, resolvido em 2026-08-30
 
-A ablação por tipo de aresta já rodou, em jul/2026, e devolveu variação de erro
+A ablação por tipo de aresta rodada em jul/2026 devolveu variação de erro
 **exatamente zero** para os cinco tipos de aresta e para os três grupos de features.
-Predições bit a bit idênticas com e sem grafo.
+O diagnóstico ([docs/diagnostico-ablacao.md](docs/diagnostico-ablacao.md)) fechou por
+**desfecho A**: o zero exato era instrumento quebrado, e o clamp satura por cima disso.
 
-A hipótese é que o instrumento sature: a predição é `clamp(y_prev + Δ, 0, 0,5)`, o
-grafo entra só por `Δ`, e nas semanas de piso qualquer `Δ` negativo é anulado pelo
-clamp. O desfecho alternativo é que o grafo realmente não influencie a predição, e
-aí o ganho sobre o SIR vem do ancoramento à persistência.
+O harness da ablação encodava a semana alvo, que a predição nunca lê: 0% das posições
+da janela chegavam ao GRU, e `Δ` era a constante 0,0032 para as 98.186 amostras. Com o
+harness corrigido, a ablação move o erro. E o recorte on-chart é o que devolve
+sensibilidade: na leitura completa o clamp anula 76,9% da correção estrutural, no
+on-chart anula 3,6%.
 
-**Nenhum treino novo antes desse diagnóstico.**
+Os números liberam o marco, mas trazem três coisas que o plano precisa absorver:
+
+- **todo o sinal está na cotrajetória** — sem ela o RMSE on-chart sobe 93%; os demais
+  tipos de aresta têm efeito **adverso** (removê-los reduz o erro);
+- **o canal de gênero está inerte** — esvaziar as 9.866 arestas gênero↔gênero não muda
+  nenhum embedding além do ruído de float. Investigar antes de investir na fase de
+  gênero estrutural;
+- **religar a cotrajetória ao acaso melhora o erro** — prévia adversa do controle de
+  topologia, confundida pelo descasamento treino (30k arestas subamostradas) contra
+  avaliação (grafo completo).
+
+`results/phase3/interpretability.parquet` mede uma constante e não pode ser citado.
 
 ## As fases
 
@@ -69,7 +82,7 @@ e as limitações de arquitetura que hoje só existem como resposta oral.
 
 ## Trabalho fatiado
 
-20 tickets em [.scratch/next-milestone/issues/](.scratch/next-milestone/issues/),
+21 tickets em [.scratch/next-milestone/issues/](.scratch/next-milestone/issues/),
 com as dependências entre eles declaradas. Os itens 16 a 20 entraram em 2026-08-19,
 vindos dos achados da preparação da qualificação.
 
@@ -78,6 +91,7 @@ Podem começar já: **01** (recorte on-chart), **02** (regime de split parametri
 **13** (dataset na introdução), **16** (fórmula da cabeça temporal no documento),
 **17** (correções pontuais em slides e specs), **20** (limitações de arquitetura no texto).
 
-Caminho crítico: **01 → 04 → 05 → 06 → {08, 09} → 10**. Os itens **18** e **19**
+Caminho crítico: **01 → 04 → 21 → 05 → 06 → {08, 09} → 10**. O item **21** (sonda do
+canal de gênero) entrou em 2026-08-30, vindo do diagnóstico. Os itens **18** e **19**
 (cotrajetória por chart, cabeça sensível ao chart) pendem de **06** e são variações de
 arquitetura, não pré-requisito do argumento central.

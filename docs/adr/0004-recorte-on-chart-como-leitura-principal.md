@@ -23,3 +23,11 @@ medição.
 
 **Alternativa rejeitada:** avaliar apenas on-chart. Descartaria entrada e saída do
 chart, que são metade do fenômeno de difusão que o trabalho se propõe a modelar.
+
+**Confirmado em 2026-08-30.** O diagnóstico do item 04
+([docs/diagnostico-ablacao.md](../diagnostico-ablacao.md)) mediu a saturação: o `clamp`
+está ativo em 82,8% das amostras na leitura completa e em 5,3% no recorte on-chart, e
+anula 76,9% contra 3,6% da correção estrutural. O efeito da ablação de `performs` é 26
+vezes maior no recorte on-chart. A suspeita registrada acima se verificou, com a
+ressalva de que o zero exato de julho tinha outra causa somada: o harness da ablação
+entregava um `Δ` constante.

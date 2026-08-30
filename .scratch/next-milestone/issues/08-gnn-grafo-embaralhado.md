@@ -12,3 +12,23 @@
 - [ ] O embaralhamento respeita a restrição temporal das arestas, sem criar vazamento
 - [ ] Mesma configuração e mesmo orçamento de treino da proposta
 - [ ] Seis treinos concluídos e avaliados na mesma matriz
+
+---
+
+## Prévia barata (2026-08-30, item 04)
+
+Religar a cotrajetória ao acaso **em tempo de avaliação**, preservando a contagem de
+arestas e os nós de origem, **reduz** o RMSE on-chart em 0,00284 (0,10049 → 0,09765) e é a
+maior melhora pré-clamp de todas as variantes (−0,00847). Adverso à tese, e é a razão de
+este ticket existir.
+
+Não conclui nada, por dois motivos que este ticket precisa resolver no protocolo:
+
+1. sem re-treino, o religamento é perturbação fora da distribuição de treino, não um
+   modelo alternativo;
+2. o treino roda com `max_cotraj_edges = 30_000` por snapshot e a avaliação usa o grafo
+   completo (480k–664k arestas). O modelo nunca viu a topologia real inteira: um
+   religamento aleatório pode simplesmente se parecer mais com o que ele viu. **Fixar o
+   mesmo orçamento de arestas em treino e avaliação, ou reportar as duas leituras.**
+
+- [ ] Orçamento de arestas de cotrajetória igual em treino e avaliação, ou as duas leituras reportadas

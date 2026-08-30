@@ -133,7 +133,10 @@ atributos acústicos.
 **C7. Ablação por tipo de aresta implementada e nunca executada** à época
 (`interpretability.py:66`; a Fase 3 rodou com `--skip-interpret`, não existe
 `results/phase3/interpretability.parquet`). Hoje é a issue 09, e o resultado zero
-exato virou o bloqueador registrado em `ablation_zero`.
+exato virou o bloqueador registrado em `ablation_zero`. **Fechado em 2026-08-30:** o
+zero era o harness encodando a semana alvo em vez da janela, e o `Δ` chegava constante
+ao GRU. Ver [`diagnostico-ablacao.md`](diagnostico-ablacao.md). Os números de
+`results/phase3/interpretability.parquet` não podem ser citados.
 
 ## D. Afirmações a não fazer (correções de fala)
 
