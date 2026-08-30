@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pandas as pd
 import torch
+from torch import Tensor
 from torch_geometric.data import HeteroData
 
 from music_diffusion_gnn.evaluation.metrics import rmse
@@ -27,17 +28,33 @@ _SCHEMA = ["analysis", "component", "delta_rmse", "regime"]
 
 def _predict_all(model: "MusicDiffusionGNN", g: HeteroData, samples: list["Sample"]) -> np.ndarray:
     """Run encode_weeks/predict per distinct target_week and return predictions
-    aligned 1:1 with ``samples`` order. model.eval() + no_grad throughout."""
+    aligned 1:1 with ``samples`` order. model.eval() + no_grad throughout.
+
+    The bank must hold the *look-back window* weeks (``[w-W, ..., w-1]``), which
+    is what :meth:`MusicDiffusionGNN.predict` gathers — not the target week ``w``
+    itself. Encoding only ``[w]`` (the pre-2026-08 behaviour) left every window
+    position missing from the bank, so ``predict`` fell back to a zero embedding
+    for the whole sequence: Δ became a constant independent of the graph, and
+    every ablation returned *exactly* zero delta_rmse. Embeddings are cached
+    across target weeks since consecutive windows overlap heavily.
+    """
     preds = np.empty(len(samples), dtype=np.float64)
     by_week: dict[int, list[int]] = {}
     for i, s in enumerate(samples):
         by_week.setdefault(s.target_week, []).append(i)
 
     model.eval()
+    zcache: dict[int, Tensor] = {}
     with torch.no_grad():
         for week, idxs in by_week.items():
-            bank = model.encode_weeks(g, [week])
             week_samples = [samples[i] for i in idxs]
+            # Union over the batch: padded positions (-1) differ per sample
+            # (first_seen_week), the real weeks do not.
+            window = sorted({w for s in week_samples for w in s.window_weeks if w >= 0})
+            missing = [w for w in window if w not in zcache]
+            if missing:
+                zcache.update(model.encode_weeks(g, missing))
+            bank = {w: zcache[w] for w in window}
             y_pred = model.predict(bank, week_samples)
             preds[idxs] = y_pred.detach().cpu().numpy()
     return preds

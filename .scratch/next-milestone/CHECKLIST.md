@@ -2,6 +2,10 @@
 
 procurar revistas com o tema
 
+## Fase 0 — Diagnóstico (ago) — BLOQUEIA O MARCO
+
+- [ ] 04 — Diagnóstico da saturação da ablação (notebook pronto: `notebooks/item04_diagnostico_saturacao_colab.ipynb`)
+
 ## Fase 1 — Gênero estrutural (ago–set)
 
 - [ ] 05 — Atributos estruturais de gênero e grafo reconstruído

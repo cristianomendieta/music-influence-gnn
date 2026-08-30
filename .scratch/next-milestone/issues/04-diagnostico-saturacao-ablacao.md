@@ -17,3 +17,22 @@ Este ticket bloqueia o marco inteiro: nenhum treino novo antes do veredito.
 - [ ] Reporta a fração de amostras em que o clamp está ativo
 - [ ] Repete a ablação por tipo de aresta sob recorte on-chart
 - [ ] Conclui explicitamente por desfecho A ou B, com o número que sustenta a conclusão
+
+---
+
+## Andamento (2026-08-26)
+
+Hipótese nova, **C**, levantada na leitura do código antes de qualquer execução:
+`_predict_all` (em `evaluation/interpretability.py`) chamava
+`model.encode_weeks(g, [s.target_week])`, mas `MusicDiffusionGNN.predict` lê o banco
+nas semanas da **janela** `[w-W, …, w-1]` — a semana alvo nunca está nela. Toda posição
+da janela caía no ramo `torch.zeros(B, hidden)`, o GRU recebia sequência nula e `Δ`
+virava constante: a ablação **não podia** dar outra coisa que zero exato, e o mesmo
+vale para a permutação por grupo de features (que também deu zero).
+
+Corrigido em `interpretability.py` (`_predict_all` passa a encodar as semanas da janela,
+com cache entre semanas alvo). 12 testes verdes.
+
+Instrumento do veredito: `notebooks/item04_diagnostico_saturacao_colab.ipynb`, autocontido
+(reimplementa a predição, não depende da correção estar no `main`), para rodar no Colab GPU.
+Mede as três hipóteses e conclui por A, B ou A-parcial com o número que sustenta.
