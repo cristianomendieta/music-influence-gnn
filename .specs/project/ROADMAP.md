@@ -47,10 +47,10 @@ registrado em [ADR-0001](../../docs/adr/0001-precompromisso-de-falseamento.md).
 1. `results/phase3/interpretability.parquet` mede uma constante. Não é resultado, é
    artefato; não pode ser citado, e a permutação por grupo de features precisa ser
    refeita junto com a Phase 6.
-2. **Canal de gênero inerte** (bloqueia a Phase 5): esvaziar as 9.866 arestas
-   `cooccurs` não altera nenhum embedding além do ruído de float (3e−08), apesar de
-   existir caminho gênero→artista→música em três camadas. Sondar a causa antes de
-   derivar atributos de gênero.
+2. ~~**Canal de gênero inerte** (bloqueia a Phase 5)~~ — resolvido em 2026-08-31 pela
+   Phase 5: a causa era a média de uma tabela i.i.d. centrada em zero, não a falta de
+   caminho. Com os atributos do ADR-0003 e o re-treino, o canal conduz (1,9e−04 contra
+   3e−08). A ablação de `cooccurs` precisa ser refeita sobre o checkpoint novo.
 3. **Descasamento de densidade treino/avaliação** (afeta a Phase 6): treino com
    `max_cotraj_edges = 30_000` por snapshot, avaliação com o grafo completo (480k–664k
    arestas). Religar a cotrajetória ao acaso **melhora** o erro on-chart (−0,0028), o
@@ -58,15 +58,28 @@ registrado em [ADR-0001](../../docs/adr/0001-precompromisso-de-falseamento.md).
    precisa fixar o mesmo orçamento de arestas nos dois lados, ou reportar as duas
    leituras.
 
-### Phase 5 — Nova representação de gênero e reconstrução do grafo (ago–set)
+### Phase 5 — Nova representação de gênero e reconstrução do grafo (ago–set) — CONCLUÍDA 2026-08-31
 
-**Precedida pela sonda do canal de gênero** (achado 2 da Phase 4): se `cooccurs` não
-propaga até `music`, atributos novos de gênero não movem número nenhum, e o que a fase
-entrega é a correção do canal, não a representação.
+Gênero passou a ser descrito por quatro atributos com fórmula derivados da rede gênero↔gênero,
+restritos aos anos de treino do regime ([ADR-0003](../../docs/adr/0003-atributos-de-genero-derivados.md));
+o `x_genre` aleatório saiu, o grafo foi reconstruído por regime e C1–C9 estão verdes nos dois.
+Relatórios: [`docs/genero-estrutural-retreino.md`](../../docs/genero-estrutural-retreino.md) e
+[`docs/sonda-canal-genero.md`](../../docs/sonda-canal-genero.md).
 
-Substituir a tabela de 530×32 parâmetros livres por atributos derivados da rede
-gênero↔gênero, restritos aos anos de treino ([ADR-0003](../../docs/adr/0003-atributos-de-genero-derivados.md)).
-Remover o `x_genre` aleatório, hoje código morto. Reconstruir o grafo e revalidar C1–C9.
+- **A troca não custou desempenho.** `val_mse` 0,000754 contra 0,000749 do grafo antigo (+0,7%),
+  na mesma config `W12_h128_l3_lr5e-04` e com as mesmas features de música e artista — dentro da
+  dispersão 0,000749–0,000764 das 24 configs da grid v2. Bate a persistência nos quatro pares
+  split×chart. Uma seed; as outras duas ficam no item 06.
+- **O canal de gênero deixou de ser inerte** (fecha o achado 2 da Phase 4 e o item 21). Com pesos
+  treinados, esvaziar `cooccurs` move o embedding de `music` em 1,9e−04 contra 3e−08 do modelo
+  antigo. A causa antiga era dupla: `SAGEConv` promedia os vizinhos e a média da tabela aleatória
+  i.i.d. se cancelava, e o treino não preservava o resto.
+- **Conduzir não é ser útil.** O sinal cai de 24,8% da magnitude do embedding em `genre` para
+  0,5% em `music`, e o `val_mse` não se mexeu. A utilidade do gênero é o que a Phase 6 mede.
+
+**Consequência para a Phase 6:** a ablação por tipo de aresta precisa ser refeita sobre o
+checkpoint novo. O `delta_rmse` zero de `cooccurs` no item 04 foi medido num canal morto; com o
+canal vivo, um zero persistente vira afirmação sobre utilidade, não sobre propagação.
 
 ### Phase 6 — Escada de comparação (set–out)
 
@@ -81,7 +94,13 @@ Cinco modelos sob o mesmo protocolo, mesmas features e mesmo eixo semanal:
 | MusicDiffusionGNN | a proposta |
 
 Mais ablação por tipo de aresta sobre a GNN completa, em tempo de avaliação, sem
-re-treino, com o harness corrigido e a permutação por grupo de features refeita.
+re-treino, com o harness corrigido e a permutação por grupo de features refeita. Inclui
+obrigatoriamente `cooccurs` (o zero do item 04 saiu de um canal morto) e a sonda de
+`has_genre`/`rev_has_genre`, herdada do item 21.
+
+**1 dos 18 treinos já está feito:** `current`/seed 42 sobre o grafo do ADR-0003, entregue
+pela Phase 5 (`val_mse` 0,000754). Faltam `current` seeds 43/44 e as três de `pre_pandemia`
+para a proposta, mais os dois outros modelos neurais.
 
 **Matriz:** 3 modelos neurais × 2 splits × 3 seeds = **18 treinos**, mais SIR e
 persistência refeitos nos dois splits. Avaliação em 2 recortes (completo e on-chart,
@@ -131,5 +150,5 @@ capítulo de resultados e discussão.
 | Só a cotrajetória carrega sinal, e a topologia dela não importa (prévia do religamento aleatório) | ADR-0001 já define o que a tese passa a dizer; o veredito é a Phase 6 com treino sobre grafo embaralhado |
 | Comparações de topologia confundidas pelo subsample de cotrajetória no treino | Fixar o mesmo orçamento de arestas em treino e avaliação na Phase 6 |
 | 18 treinos dependem do Colab, que desconecta | Retomada por config já implementada; checkpoints no Drive |
-| Novas features de gênero piorarem o resultado | É resultado reportável; a alternativa anterior não era defensável |
+| ~~Novas features de gênero piorarem o resultado~~ | Descartado em 2026-08-31: +0,7% de `val_mse` numa seed, dentro da dispersão da grid. O risco vivo agora é outro: o gênero conduzir e mesmo assim não contribuir para o erro |
 | Split pré-pandemia inverter a ordenação dos modelos | É exatamente o que a checagem existe para detectar |

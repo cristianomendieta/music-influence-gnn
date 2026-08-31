@@ -250,6 +250,11 @@
 - [x] Executar `/tlc-spec-driven design phase-3-evaluation` (OQ1–OQ6 resolvidas; design.md aprovado). 2026-06-28.
 - [x] Executar `/tlc-spec-driven tasks phase-3-evaluation` (12 tasks atômicas em 5 waves). 2026-06-28.
 - [ ] Executar `/tlc-spec-driven implement phase-3-evaluation` (rodar T1 → T12).
+- [x] **Item 21** — sonda do canal de gênero (pesos iniciais + treinados): canal utilizável. 2026-08-31.
+- [x] **Item 05** — gênero estrutural + re-treino no regime `current`. 2026-08-31.
+- [ ] **Item 06** — completar a matriz: `current` seeds 43/44 e `pre_pandemia` seeds 42/43/44 (5 treinos).
+- [ ] **Item 09** — refazer a ablação por tipo de aresta sobre o checkpoint novo, `cooccurs` incluído,
+      mais a sonda de `has_genre`/`rev_has_genre` herdada do item 21.
 
 ## Consolidação documental e novo marco (2026-08-18)
 
@@ -339,9 +344,48 @@ C1–C9 verdes nos dois regimes. Suíte de testes verde (`tests/test_genre_featu
 arquivos com mensagem explícita, e `tests/test_phase3_model_io.py` fica em skip até o
 re-treino.
 
-**Pendente (roda no Colab):** [`notebooks/item05_genero_estrutural_colab.ipynb`](../../notebooks/item05_genero_estrutural_colab.ipynb)
-— re-treino da config vencedora sobre o grafo reconstruído (referência a bater: `val_mse`
-0,000749 do grafo antigo) e a sonda do canal de gênero com pesos treinados.
+**Re-treino e sonda treinada: concluídos em 2026-08-31** (regime `current`, seção abaixo).
+
+## Phase 5 — re-treino e canal de gênero: fechado (2026-08-31)
+
+Rodado no Colab GPU pelo [`notebooks/item05_genero_estrutural_colab.ipynb`](../../notebooks/item05_genero_estrutural_colab.ipynb)
+(commit `4a3e7e7`), regime `current`, seed 42, config `W12_h128_l3_lr5e-04`, 35 épocas em 21,4 min.
+Relatório: [`docs/genero-estrutural-retreino.md`](../../docs/genero-estrutural-retreino.md).
+Artefatos em `results/item05_genero_estrutural/` (gitignored) e no Drive.
+
+**1. A nova representação de gênero não custa desempenho.** `val_mse` 0,000754 contra 0,000749
+do grafo antigo (+0,7%), com a comparação pareada na configuração e nas features de música e
+artista — a remoção de vazamento que as levou a 12 e 1 dimensões é de 2026-06-14, anterior à
+grid v2. A diferença cai dentro da dispersão da própria grid v2 (0,000749–0,000764 em 24
+configs). Uma seed só: não é empate estatístico ainda, mas é evidência de que trocar 16.960
+parâmetros livres por quatro colunas com fórmula não degradou nada. A crítica da banca fica
+atendida sem preço.
+
+**2. C6/C7 continuam verdes.** Forecasting de 1 passo, leitura completa: val viral50 0,000839 <
+0,000964 da persistência; val top200 0,000619 < 0,000861; teste viral50 0,000636 < 0,000716;
+teste top200 0,000488 < 0,000618. Não comparar célula a célula com o `summary.md` da Phase 2:
+aquele saiu da config fraca W4.
+
+**3. Item 21 fechado: canal utilizável.** Com pesos treinados, esvaziar `cooccurs` move o
+embedding de `music` em **1,9e−04** contra os **3e−08** do modelo antigo — ~6.200× maior, quatro
+ordens acima do ruído de float, 70% dos nós de música alterados. A inércia do item 04 era das
+duas causas somadas: a média da tabela aleatória se cancelava **e** o treino não preservava o que
+chegava por ali. Tabelas em [`docs/sonda-canal-genero.md`](../../docs/sonda-canal-genero.md).
+
+**Ressalva de escala, que é o achado a carregar adiante.** O sinal de gênero cai de 24,8% da
+magnitude típica do embedding em `genre` para 15,4% em `artist` e **0,5%** em `music`, num
+embedding 92% esparso pós-ReLU. O canal conduz, mas o `val_mse` não se mexeu: **conduzir não é
+ser útil**. A utilidade é o que o item 09 mede.
+
+**Consequência direta para a Phase 6.** A ablação por tipo de aresta precisa ser refeita sobre
+este checkpoint. O `delta_rmse` exatamente 0,000000 de `cooccurs` no item 04 foi medido num
+modelo com o canal morto; se o zero persistir com o canal vivo, o achado passa a ser sobre a
+utilidade do gênero, não sobre a propagação — afirmação bem mais forte e reportável.
+
+**Pendências que migraram para o item 06:** regime `pre_pandemia` (`absent_from_network` sobe de
+20,6% para 30,8% dos gêneros, então a representação muda de verdade entre os regimes) e as seeds
+43 e 44. 1 dos 6 treinos da matriz já está feito.
+
 
 ## Deferred ideas
 

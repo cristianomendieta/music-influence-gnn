@@ -6,7 +6,10 @@ Os resultados anteriores não são comparáveis: mudaram as features de gênero,
 
 **Blocked by:** 02, 03, 05
 
-**Status:** ready-for-agent
+**Status:** ready-for-agent — **1 dos 6 treinos já está feito**. O item 05 rodou `current`/seed 42
+sobre o grafo do ADR-0003 (`val_mse` 0,000754, checkpoint `gnn_current_seed42.pt` no Drive e em
+`results/item05_genero_estrutural/`). Faltam `current` seeds 43 e 44 e as três seeds de
+`pre_pandemia`. O notebook do item 05 já retoma por seed e por regime.
 
 - [ ] Seis treinos concluídos (2 splits × 3 seeds), com retomada em caso de desconexão
 - [ ] Avaliação nos dois recortes e nos três horizontes, para os dois regimes de chart

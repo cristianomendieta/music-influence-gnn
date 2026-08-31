@@ -158,9 +158,15 @@ Esta é a **espinha dorsal da contribuição**: o objeto que codifica os sinais 
 
 | Nó | Contagem | Features |
 |----|----------|----------|
-| `music` | 6.526 | 15 dims: 9 acústicas (z-score) + popularidade + explicit + tipo + streams + dias no chart + flag de ausência |
-| `artist` | 1.701 | 4 dims: nº hits, nº colaborações, anos no chart, nº gêneros (z-score) |
-| `genre` | 530 | embedding estrutural 32-d (init aleatória, treinável) |
+| `music` | 6.526 | 12 dims: 9 acústicas (z-score) + explicit + tipo + flag de ausência. Popularidade, streams e dias no chart **saíram** em 2026-06-14: são agregados de toda a série e vazam o teste (`tests/test_node_feature_leakage.py`) |
+| `artist` | 1.701 | 1 dim: nº gêneros (z-score). Nº de hits, colaborações e anos no chart saíram pelo mesmo motivo |
+| `genre` | 530 | 4 atributos com fórmula, derivados da rede gênero↔gênero: `degree`, `weighted_degree`, `n_artists` (log1p + escore-z) e a bandeira `absent_from_network`. Substituíram a tabela aprendida de 530×32 em 2026-08-18 ([ADR-0003](adr/0003-atributos-de-genero-derivados.md)) |
+
+> **Um grafo por regime de split.** Os atributos de gênero só podem usar os anos inteiramente
+> contidos na janela de treino, então o build produz `hetero_full_current.pt` (2017–2019) e
+> `hetero_full_pre_pandemia.pt` (2017–2018), resolvidos por `graph.build.graph_path(regime)`.
+> `hetero_full.pt` não existe mais. Pela mesma restrição causal, `Avg_Popularity` e `Avg_Streams`
+> saíram também do `edge_attr` de `cooccurs`, que passou de 4 para 2 colunas.
 
 O `build_hetero` ([build.py:62](../src/music_diffusion_gnn/graph/build.py#L62)) orquestra
 tudo: constrói os nós, depois cada tipo de aresta, e monta o `HeteroData` do PyG. As

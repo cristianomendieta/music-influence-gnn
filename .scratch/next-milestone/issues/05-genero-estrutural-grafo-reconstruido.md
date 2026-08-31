@@ -16,7 +16,7 @@ nenhum: a entrega desta issue passa a incluir a evidência de que o canal conduz
 
 **Blocked by:** 04 (concluído), 21
 
-**Status:** código entregue em 2026-08-30; falta o re-treino (Colab) e a evidência do canal treinado
+**Status:** concluído em 2026-08-31 no regime `current`. Resultado em `docs/genero-estrutural-retreino.md`. O regime `pre_pandemia` e as seeds 43/44 passam para o item 06, que já os pede na matriz
 
 - [x] Atributos de gênero derivados da rede, com fórmula explícita e documentada
       (`graph/nodes.py::genre_attributes`, ADR-0003)
@@ -28,6 +28,9 @@ nenhum: a entrega desta issue passa a incluir a evidência de que o canal conduz
       (checkpoints anteriores a ADR-0003 não carregam mais, por desenho)
 - [x] Grafo reconstruído e critérios de validação C1 a C9 revalidados nos dois regimes
 - [x] Evidência de que o canal conduz — parte arquitetural: `docs/sonda-canal-genero.md`
-- [ ] Evidência de que o canal conduz **depois de treinado** — seção 4 de
-      `notebooks/item05_genero_estrutural_colab.ipynb`, roda no Colab
-- [ ] Re-treino da config vencedora sobre o grafo reconstruído (mesmo notebook, seção 3)
+- [x] Evidência de que o canal conduz **depois de treinado**: 1,9e−04 no embedding de `music`
+      contra 3e−08 do modelo antigo (`docs/sonda-canal-genero.md`, parte 2). Item 21 fechado
+- [x] Re-treino da config vencedora sobre o grafo reconstruído: `val_mse` **0,000754** contra
+      0,000749 do grafo antigo (+0,7%, dentro da dispersão 0,000749–0,000764 da grid v2). Trocar
+      16.960 parâmetros livres por quatro colunas com fórmula não custou desempenho. Bate a
+      persistência nos quatro pares split×chart (`docs/genero-estrutural-retreino.md`)

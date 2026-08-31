@@ -46,14 +46,29 @@ Os números liberam o marco, mas trazem três coisas que o plano precisa absorve
 
 - **todo o sinal está na cotrajetória** — sem ela o RMSE on-chart sobe 93%; os demais
   tipos de aresta têm efeito **adverso** (removê-los reduz o erro);
-- **o canal de gênero está inerte** — esvaziar as 9.866 arestas gênero↔gênero não muda
-  nenhum embedding além do ruído de float. Investigar antes de investir na fase de
-  gênero estrutural;
+- ~~**o canal de gênero está inerte**~~ — resolvido em 2026-08-31 (ver abaixo);
 - **religar a cotrajetória ao acaso melhora o erro** — prévia adversa do controle de
   topologia, confundida pelo descasamento treino (30k arestas subamostradas) contra
   avaliação (grafo completo).
 
 `results/phase3/interpretability.parquet` mede uma constante e não pode ser citado.
+
+## Gênero estrutural — concluído em 2026-08-31
+
+A tabela de 530×32 parâmetros livres virou quatro atributos com fórmula, derivados da
+rede gênero↔gênero e restritos aos anos de treino. O grafo foi reconstruído (um por
+regime de split) e a config vencedora re-treinada:
+[docs/genero-estrutural-retreino.md](docs/genero-estrutural-retreino.md).
+
+- **Não custou desempenho:** `val_mse` 0,000754 contra 0,000749 do grafo antigo, na mesma
+  config e dentro da dispersão das 24 da grid. A crítica da banca fica atendida de graça.
+- **O canal de gênero deixou de ser inerte:** esvaziar `cooccurs` move o embedding de
+  música em 1,9e−04, contra 3e−08 no modelo antigo. A causa da inércia era a agregação —
+  `SAGEConv` promedia os vizinhos, e a média de uma tabela aleatória se cancela
+  ([docs/sonda-canal-genero.md](docs/sonda-canal-genero.md)).
+- **Conduzir não é ser útil:** o sinal chega atenuado a 0,5% da magnitude do embedding de
+  música, e o erro de validação não se mexeu. Se a ablação refeita der zero de novo, o
+  achado passa a ser sobre a utilidade do gênero, não sobre a propagação.
 
 ## As fases
 
@@ -91,7 +106,7 @@ Podem começar já: **01** (recorte on-chart), **02** (regime de split parametri
 **13** (dataset na introdução), **16** (fórmula da cabeça temporal no documento),
 **17** (correções pontuais em slides e specs), **20** (limitações de arquitetura no texto).
 
-Caminho crítico: **01 → 04 → 21 → 05 → 06 → {08, 09} → 10**. O item **21** (sonda do
-canal de gênero) entrou em 2026-08-30, vindo do diagnóstico. Os itens **18** e **19**
+Caminho crítico: **01 → 04 → 21 → 05 → 06 → {08, 09} → 10**. Os itens **04**, **21** e
+**05** estão fechados; a frente ativa é o **06** (5 dos 6 treinos da proposta faltando). Os itens **18** e **19**
 (cotrajetória por chart, cabeça sensível ao chart) pendem de **06** e são variações de
 arquitetura, não pré-requisito do argumento central.

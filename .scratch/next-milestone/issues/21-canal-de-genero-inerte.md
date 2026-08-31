@@ -8,14 +8,20 @@ Isso é pré-requisito do item 05: derivar atributos de gênero com fórmula par
 
 **Blocked by:** 04 (concluído)
 
-**Status:** parte arquitetural respondida em 2026-08-30 (`docs/sonda-canal-genero.md`); falta a medição com pesos treinados
+**Status:** concluído em 2026-08-31 — **canal utilizável**. Sonda completa (pesos iniciais e treinados) em `docs/sonda-canal-genero.md`. Fica um resíduo herdado para o item 09: sondar `has_genre`/`rev_has_genre`
 
 - [x] Mede a norma e a fração de zeros de `h_genre` e `h_artist` camada a camada, com e sem `cooccurs`
 - [x] Diz onde o sinal de gênero morre: **não é ausência de caminho**. Com pesos inicializados o
       canal conduz até `music` (70% dos nós mudam); o que o matava era a agregação — `SAGEConv`
       tira a média dos vizinhos, e a média da tabela aleatória de 530×32, i.i.d. centrada em zero,
       se cancela. Com os atributos do ADR-0003 o sinal que chega em `music` é ~83× maior
-- [ ] Confirmar com **pesos treinados**: a inércia de 3e−08 do item 04 é 3 ordens abaixo da sonda
-      com pesos aleatórios, então o treino também atenuou o canal (seção 4 do notebook do item 05)
-- [ ] Verifica o mesmo para `has_genre` e `rev_has_genre`, que hoje têm `delta_rmse` negativo (removê-los melhora o modelo)
-- [ ] Conclui por: canal utilizável (segue o item 05 como está), canal a corrigir (a correção entra no item 05) ou gênero fora do grafo (o item 05 muda de escopo)
+- [x] Confirmado com **pesos treinados** (checkpoint re-treinado no grafo do ADR-0003, regime
+      `current`): esvaziar `cooccurs` move o embedding de `music` em **1,9e−04**, contra 3e−08 no
+      modelo antigo — ~6.200× maior, com 70% dos nós de música alterados. A inércia do item 04 era
+      das duas causas somadas: a média da tabela aleatória se cancelava **e** o treino não tinha
+      por que preservar o que chegava por ali
+- [ ] Verifica o mesmo para `has_genre` e `rev_has_genre`, que hoje têm `delta_rmse` negativo
+      (removê-los melhora o modelo) — **passa para o item 09**, junto com a ablação refeita
+- [x] Conclui por **canal utilizável**: o item 05 segue como está. Com a ressalva de escala
+      registrada — o sinal cai de 24,8% do embedding em `genre` para 0,5% em `music`, e o
+      `val_mse` não se mexeu. Conduzir não é ser útil; a utilidade é o que o item 09 mede
