@@ -120,10 +120,9 @@ def _build_origins(
 
 def _onchart_weeks_set(ts_df: pd.DataFrame) -> set[tuple[str, str, int]]:
     """Set of (song_id, chart, week) where rank_score > 0 for at least one day."""
-    df = ts_df[ts_df["rank_score"] > 0].copy()
-    df["week"] = _week_index_vec(df["date"]).values
-    df = df[(df["week"] >= 0) & (df["week"] <= _MAX_WEEK)]
-    return set(zip(df["song_id"], df["chart"], df["week"].astype(int)))
+    from music_diffusion_gnn.evaluation.longhits import onchart_weeks
+
+    return onchart_weeks(ts_df, max_week=_MAX_WEEK)
 
 
 def _per_song_rmse(

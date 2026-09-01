@@ -26,7 +26,12 @@ if TYPE_CHECKING:
 _SCHEMA = ["analysis", "component", "delta_rmse", "regime"]
 
 
-def _predict_all(model: "MusicDiffusionGNN", g: HeteroData, samples: list["Sample"]) -> np.ndarray:
+def predict_all(
+    model: "MusicDiffusionGNN",
+    g: HeteroData,
+    samples: list["Sample"],
+    max_cotraj_edges: int | None = None,
+) -> np.ndarray:
     """Run encode_weeks/predict per distinct target_week and return predictions
     aligned 1:1 with ``samples`` order. model.eval() + no_grad throughout.
 
@@ -47,22 +52,36 @@ def _predict_all(model: "MusicDiffusionGNN", g: HeteroData, samples: list["Sampl
     zcache: dict[int, Tensor] = {}
     with torch.no_grad():
         for week, idxs in by_week.items():
+            # ``predict`` reads the bank week off ``samples[0].window_weeks[t]``, so a
+            # first sample that debuted late (a ``-1`` at position t) blanks that
+            # position for the WHOLE batch, and the graph stops reaching the GRU
+            # there. Full week batches are unaffected (measured: the first sample
+            # covers 100% of the test positions), but an ablation run on a subset
+            # can silently measure nothing — the failure mode of issue 04, by a
+            # different route. Putting the most complete window first is a no-op on
+            # full batches and removes the order dependency on subsets.
+            idxs = sorted(idxs, key=lambda i: sum(samples[i].pad_mask))
             week_samples = [samples[i] for i in idxs]
             # Union over the batch: padded positions (-1) differ per sample
             # (first_seen_week), the real weeks do not.
             window = sorted({w for s in week_samples for w in s.window_weeks if w >= 0})
             missing = [w for w in window if w not in zcache]
             if missing:
-                zcache.update(model.encode_weeks(g, missing))
+                zcache.update(model.encode_weeks(g, missing, max_cotraj_edges=max_cotraj_edges))
             bank = {w: zcache[w] for w in window}
             y_pred = model.predict(bank, week_samples)
             preds[idxs] = y_pred.detach().cpu().numpy()
     return preds
 
 
+# Kept as a private alias: the corrected harness is referenced by this name in
+# docs/diagnostico-ablacao.md and in the item-04 notebook.
+_predict_all = predict_all
+
+
 def _baseline_rmse(model: "MusicDiffusionGNN", g: HeteroData, samples: list["Sample"]) -> float:
     y_true = np.array([s.y for s in samples], dtype=np.float64)
-    y_pred = _predict_all(model, g, samples)
+    y_pred = predict_all(model, g, samples)
     return rmse(y_true, y_pred)
 
 
@@ -100,7 +119,7 @@ def edge_type_ablation(
     rows = []
     for et in g.edge_types:
         g_ablated = _empty_edge_store(g, et)
-        y_pred = _predict_all(model, g_ablated, val_samples)
+        y_pred = predict_all(model, g_ablated, val_samples)
         rows.append({
             "analysis": "edge_type_ablation",
             "component": str(et),
@@ -134,7 +153,7 @@ def feature_group_permutation(
         x[:, cols] = x[perm][:, cols]
         g_perturbed["music"].x = x
 
-        y_pred = _predict_all(model, g_perturbed, val_samples)
+        y_pred = predict_all(model, g_perturbed, val_samples)
         rows.append({
             "analysis": "feature_group_permutation",
             "component": group_name,

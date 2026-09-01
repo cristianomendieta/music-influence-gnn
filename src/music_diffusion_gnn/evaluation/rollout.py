@@ -166,6 +166,7 @@ def gnn_rollout_recursive(
     ks: tuple[int, ...] = (1, 2, 4),
     device: str = "cpu",
     regime: str = "current",
+    max_cotraj_edges: int | None = None,
 ) -> pd.DataFrame:
     """Recursive GNN rollout (Mode 2): genuine k-step-ahead forecasting.
 
@@ -195,6 +196,10 @@ def gnn_rollout_recursive(
         device: torch device for model + graph.
         regime: split-regime name (``SPLIT_REGIMES``, default ``"current"``)
             whose test-span boundaries gate ``origins``.
+        max_cotraj_edges: cotrajectory-edge budget per snapshot, forwarded to
+            ``encode_weeks``. ``None`` (default) evaluates on the complete
+            graph; passing the training budget (``Config.max_cotraj_edges``)
+            gives the matched-budget reading issue 08 asks for.
 
     Returns:
         DataFrame with columns ``[song_id, chart, origin_week, k, y_true,
@@ -229,7 +234,7 @@ def gnn_rollout_recursive(
         if missing:
             model.pop_bank = orig_bank  # encode_weeks must only ever see real, historical data
             with torch.no_grad():
-                zcache.update(model.encode_weeks(g, missing))
+                zcache.update(model.encode_weeks(g, missing, max_cotraj_edges=max_cotraj_edges))
 
     try:
         for _, orow in origins.iterrows():
