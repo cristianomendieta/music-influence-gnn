@@ -180,3 +180,70 @@ def structure_pays(table: pd.DataFrame, *, controls: tuple[str, ...] = ("sem_gra
         out.append({"estrato": estrato, "veredito": verdict,
                     **{f"horizontes_vencidos_{s}": w for s, (_, w) in per_split.items()}})
     return pd.DataFrame(out)
+
+
+_CELL = ["split_regime", "estrato", "k", "contraste"]
+
+
+def sensitivity_by_seed(
+    preds_seeds: pd.DataFrame, strata: pd.DataFrame, main_map: pd.DataFrame, **build_kwargs
+) -> pd.DataFrame:
+    """Does each label of ``main_map`` repeat when the map is rebuilt seed by seed?
+
+    ``preds_seeds`` is the format of :func:`build_map` plus a ``seed`` column (one
+    model run per seed, not the seed average). Returns ``main_map``'s cells with
+    the label of every seed, how many seeds agree with the main label
+    (``seeds_concordam``) and how many seeds had the cell (``n_seeds``).
+    """
+    per_seed = []
+    for seed, grp in preds_seeds.groupby("seed"):
+        m = build_map(grp, strata, **build_kwargs)[[*_CELL, "rotulo"]]
+        per_seed.append(m.rename(columns={"rotulo": f"rotulo_seed{seed}"}))
+    out = main_map[[*_CELL, "rotulo"]].copy()
+    for m in per_seed:
+        out = out.merge(m, on=_CELL, how="left")
+    seed_cols = [c for c in out.columns if c.startswith("rotulo_seed")]
+    out["seeds_concordam"] = out[seed_cols].eq(out["rotulo"], axis=0).sum(axis=1)
+    out["n_seeds"] = out[seed_cols].notna().sum(axis=1)
+    return out
+
+
+def by_chart_rmse(
+    preds: pd.DataFrame, strata: pd.DataFrame, *, treated: str = "proposta",
+    controls: tuple[str, ...] = ("sem_grafo", "embaralhado"),
+) -> pd.DataFrame:
+    """RMSE difference (treated − control) per stratum and chart. Descriptive: no test, no label."""
+    d = preds[preds["onchart"] & preds["modelo"].isin([treated, *controls])]
+    d = d.merge(strata[["song_id", "chart", "origin_week", "estrato"]],
+                on=["song_id", "chart", "origin_week"], how="inner")
+    d = d[d["estrato"] != "sem_serie"].copy()
+    d["err"] = (d["y_true"] - d["y_pred"]) ** 2
+    mse = (d.groupby(["split_regime", "estrato", "chart", "k", "modelo"], observed=True)["err"]
+             .agg(["mean", "size"]).reset_index())
+    base = mse[mse["modelo"] == treated].rename(columns={"mean": "mse_tratado", "size": "n_origens"})
+    out = []
+    for control in controls:
+        c = mse[mse["modelo"] == control][["split_regime", "estrato", "chart", "k", "mean"]]
+        m = base.merge(c.rename(columns={"mean": "mse_controle"}),
+                       on=["split_regime", "estrato", "chart", "k"])
+        m["contraste"] = control
+        m["dif_rmse"] = np.sqrt(m["mse_tratado"]) - np.sqrt(m["mse_controle"])
+        out.append(m[["split_regime", "estrato", "chart", "k", "contraste", "n_origens", "dif_rmse"]])
+    return pd.concat(out, ignore_index=True)
+
+
+def margin_sensitivity(table: pd.DataFrame, fracs: tuple[float, ...] = (0.025, 0.10)) -> pd.DataFrame:
+    """Cells whose label changes when the equivalence margin is ``fracs`` of the control's MSE.
+
+    The bootstrap does not depend on the margin, so labels are recomputed from the
+    stored CI and ``mean_b``. Returns only the tested cells whose label differs
+    from the main one for some fraction.
+    """
+    t = table[~table["insuficiente"]].copy()
+    changed = pd.Series(False, index=t.index)
+    for f in fracs:
+        col = f"rotulo_{f:g}"
+        t[col] = [label_cell(r.ci_lo, r.ci_hi, r.p_holm, f * r.mean_b) for r in t.itertuples()]
+        changed |= t[col] != t["rotulo"]
+    cols = [*_CELL, "rotulo", *[f"rotulo_{f:g}" for f in fracs]]
+    return t.loc[changed, cols].reset_index(drop=True)

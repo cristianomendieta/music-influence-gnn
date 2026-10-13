@@ -149,7 +149,7 @@ A escada de comparação deu o caso 3 nos dois splits: a proposta não supera o 
 | MAP-04 | P1: Veredito por estrato (teste e IC) | T3, T5 | Implementing |
 | MAP-05 | P1: Veredito por estrato (família do Holm, rótulos) | T4, T5 | Implementing |
 | MAP-06 | P1: Veredito por estrato ("estrutura paga" e relatório) | T5 | Implementing |
-| MAP-07 | P2: Sensibilidade (seeds, chart, margem) | Specify | Pending |
+| MAP-07 | P2: Sensibilidade (seeds, chart, margem) | T6 | Implementing |
 | MAP-08 | P3: Grau de cotrajetória | Specify | Pending |
 
 **Coverage:** 8 total, 0 mapped to tasks, 8 unmapped ⚠️

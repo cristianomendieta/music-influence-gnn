@@ -7,9 +7,12 @@ import pytest
 
 from music_diffusion_gnn.evaluation.mapa import (
     build_map,
+    by_chart_rmse,
     compare_cell,
     holm_family,
     label_cell,
+    margin_sensitivity,
+    sensitivity_by_seed,
     structure_pays,
 )
 from music_diffusion_gnn.evaluation.stats import holm_correction, paired_by_song
@@ -296,3 +299,69 @@ def test_a_song_in_both_charts_counts_once_in_n_musicas():
     table = build_map(both, both_strata, B=B, seed=1)
     assert (table.n_musicas == N_SONGS).all()
     assert (table.n_origens == 2 * N_SONGS).all()
+
+
+# ------------------------------------------------ MAP-07: seed, chart and margin sensitivity
+
+def test_label_agreement_across_seeds_is_three_of_three_when_stable_and_two_when_one_flips():
+    win = _plan_all_splits("estreia", {1: WIN, 2: WIN, 4: WIN})
+    tie = _plan_all_splits("estreia", {1: TIE, 2: TIE, 4: TIE})
+    w1, strata = _world(win, seed=1)
+    w2, _ = _world(win, seed=2)
+    w3, _ = _world(tie, seed=3)
+    seeds = pd.concat([w1.assign(seed=1), w2.assign(seed=2), w3.assign(seed=3)], ignore_index=True)
+    main = build_map(w1, strata, B=B, seed=1)
+    out = sensitivity_by_seed(seeds, strata, main, B=B, seed=1)
+    assert (out.n_seeds == 3).all()
+    assert (out.rotulo == "vence").all()
+    assert (out.seeds_concordam == 2).all()        # seeds 1 and 2 win, seed 3 ties
+    w4, _ = _world(win, seed=4)
+    stable = sensitivity_by_seed(
+        pd.concat([w1.assign(seed=1), w2.assign(seed=2), w4.assign(seed=3)], ignore_index=True),
+        strata, main, B=B, seed=1)
+    assert (stable.seeds_concordam == 3).all() and (stable.n_seeds == 3).all()
+
+
+def test_by_chart_rmse_is_the_descriptive_difference_per_chart():
+    def rows(chart, modelo, amp):
+        return [{"song_id": f"s{i}", "chart": chart, "origin_week": 100, "k": 1,
+                 "split_regime": "current", "modelo": modelo, "y_true": 0.0, "y_pred": amp,
+                 "onchart": True} for i in range(3)]
+    preds = pd.DataFrame(
+        rows("viral50", "proposta", 0.1) + rows("viral50", "sem_grafo", 0.2) + rows("viral50", "embaralhado", 0.1)
+        + rows("top200", "proposta", 0.3) + rows("top200", "sem_grafo", 0.3) + rows("top200", "embaralhado", 0.4)
+    )
+    strata = pd.DataFrame([{"song_id": f"s{i}", "chart": c, "origin_week": 100, "estrato": "jovem"}
+                           for i in range(3) for c in ("viral50", "top200")])
+    out = by_chart_rmse(preds, strata).set_index(["chart", "contraste"])
+    assert out.loc[("viral50", "sem_grafo"), "dif_rmse"] == pytest.approx(0.1 - 0.2)
+    assert out.loc[("viral50", "embaralhado"), "dif_rmse"] == pytest.approx(0.0)
+    assert out.loc[("top200", "sem_grafo"), "dif_rmse"] == pytest.approx(0.0)
+    assert out.loc[("top200", "embaralhado"), "dif_rmse"] == pytest.approx(0.3 - 0.4)
+    assert not {"p_value", "p_holm", "rotulo"} & set(out.columns)
+
+
+def _table_for_margins():
+    base = {"split_regime": "current", "estrato": "jovem", "k": 1, "contraste": "sem_grafo",
+            "p_holm": 0.9, "mean_b": 0.04, "insuficiente": False}
+    rows = [
+        {**base, "k": 1, "ci_lo": -0.0030, "ci_hi": 0.0030},    # inconclusivo @5%, equivalente @10%
+        {**base, "k": 2, "ci_lo": -0.0009, "ci_hi": 0.0009},    # equivalente @2.5%, 5% and 10%
+        {**base, "k": 4, "ci_lo": -0.0500, "ci_hi": 0.0500},    # inconclusivo everywhere
+        {**base, "contraste": "embaralhado", "ci_lo": -0.001, "ci_hi": 0.001, "insuficiente": True},
+    ]
+    t = pd.DataFrame(rows)
+    t["margin"] = 0.05 * t["mean_b"]
+    t["rotulo"] = [
+        "insuficiente" if r.insuficiente else label_cell(r.ci_lo, r.ci_hi, r.p_holm, r.margin)
+        for r in t.itertuples()
+    ]
+    return t
+
+
+def test_margin_sensitivity_lists_exactly_the_cells_whose_label_changes():
+    out = margin_sensitivity(_table_for_margins())
+    assert list(out.k) == [1]
+    row = out.iloc[0]
+    assert (row.rotulo, row["rotulo_0.025"], row["rotulo_0.1"]) == (
+        "inconclusivo", "inconclusivo", "equivalente")

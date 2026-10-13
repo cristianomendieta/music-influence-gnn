@@ -215,11 +215,11 @@ Sete tasks, uma única leva: execução inline, sem sub-agentes. O P3 (grau de c
 
 **Done when**:
 
-- [ ] Em dados sintéticos com rótulo estável entre seeds, a concordância é 3/3; com uma seed discordando, 2/3
-- [ ] `by_chart_rmse` devolve a diferença de RMSE por (estrato, chart) com os valores corretos de uma tabela conhecida e não produz `p` nem rótulo
-- [ ] `margin_sensitivity` lista exatamente as células cujo rótulo muda entre 2,5%, 5% e 10%, e uma célula com IC largo fora de qualquer margem não aparece
-- [ ] Gate check passes: `$PY -m pytest tests/test_mapa.py -q`
-- [ ] Test count: ≥ 22 tests pass in total (no silent deletions)
+- [x] Em dados sintéticos com rótulo estável entre seeds, a concordância é 3/3; com uma seed discordando, 2/3
+- [x] `by_chart_rmse` devolve a diferença de RMSE por (estrato, chart) com os valores corretos de uma tabela conhecida e não produz `p` nem rótulo
+- [x] `margin_sensitivity` lista exatamente as células cujo rótulo muda entre 2,5%, 5% e 10%, e uma célula com IC largo fora de qualquer margem não aparece
+- [x] Gate check passes: `$PY -m pytest tests/test_mapa.py -q`
+- [x] Test count: 59 tests pass across the two files (≥ 22 planned; no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
