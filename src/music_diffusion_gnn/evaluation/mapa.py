@@ -93,3 +93,90 @@ def holm_family(tests: pd.DataFrame) -> pd.Series:
     for _, grp in tests[~tests["insuficiente"]].groupby("split_regime"):
         out.loc[grp.index] = holm_correction(grp["p_value"].to_numpy())
     return out
+
+
+_KEYS = ["song_id", "chart", "origin_week", "k", "split_regime"]
+
+
+def build_map(
+    preds: pd.DataFrame,
+    strata: pd.DataFrame,
+    *,
+    treated: str = "proposta",
+    controls: tuple[str, ...] = ("sem_grafo", "embaralhado"),
+    B: int = 10_000,
+    seed: int = 42,
+    min_songs: int = 30,
+    equiv_frac: float = 0.05,
+) -> pd.DataFrame:
+    """Per-stratum verdict table: one row per ``(split_regime, estrato, k, contraste)``.
+
+    ``preds`` is long, one row per ``(model, origin)`` with ``y_true``, ``y_pred`` and
+    ``onchart`` (the format of ``predicoes_cinco_modelos.parquet``); only the
+    on-chart rows of ``treated`` and ``controls`` are used. ``strata`` maps
+    ``(song_id, chart, origin_week)`` to ``estrato``; origins without a stratum or
+    marked ``sem_serie`` are left out. Cells with fewer than ``min_songs`` songs
+    get ``rotulo = "insuficiente"`` and no statistics.
+    """
+    models = [treated, *controls]
+    d = preds[preds["onchart"] & preds["modelo"].isin(models)]
+    d = d.merge(strata[["song_id", "chart", "origin_week", "estrato"]],
+                on=["song_id", "chart", "origin_week"], how="inner")
+    d = d[d["estrato"] != "sem_serie"].copy()
+    d["err"] = (d["y_true"] - d["y_pred"]) ** 2
+    wide = d.pivot_table(index=[*_KEYS, "estrato"], columns="modelo", values="err").dropna().reset_index()
+
+    rows = []
+    for (split, estrato, k), grp in wide.groupby(["split_regime", "estrato", "k"], observed=True):
+        n_songs = grp["song_id"].nunique()
+        for control in controls:
+            base = {"split_regime": split, "estrato": estrato, "k": k, "contraste": control,
+                    "n_origens": len(grp), "n_musicas": n_songs, "insuficiente": n_songs < min_songs}
+            if base["insuficiente"]:
+                rows.append(base)
+                continue
+            r = compare_cell(grp[treated].to_numpy(), grp[control].to_numpy(),
+                             grp["song_id"].to_numpy(), B=B, seed=seed, equiv_frac=equiv_frac)
+            rows.append({**base, **r})
+
+    table = pd.DataFrame(rows)
+    table["p_holm"] = holm_family(table)
+    tested = ~table["insuficiente"]
+    table["rotulo"] = "insuficiente"
+    table.loc[tested, "rotulo"] = [
+        label_cell(r.ci_lo, r.ci_hi, r.p_holm, r.margin) for r in table[tested].itertuples()
+    ]
+    return table
+
+
+def structure_pays(table: pd.DataFrame, *, controls: tuple[str, ...] = ("sem_grafo", "embaralhado"),
+                   min_horizons: int = 2) -> pd.DataFrame:
+    """Which strata the structure pays in: ``estrutura paga``, ``nao paga`` or ``nao testavel``.
+
+    A horizon counts for a split when the treated model ``vence`` **both** controls
+    at that ``k``. A stratum is ``estrutura paga`` when that holds for at least
+    ``min_horizons`` horizons in **every** split. It is ``nao testavel`` when some
+    split has fewer than ``min_horizons`` testable horizons (all controls
+    sufficiently sampled), since the criterion cannot be met there.
+    """
+    out = []
+    splits = sorted(table["split_regime"].unique())
+    for estrato, grp in table.groupby("estrato", observed=True):
+        per_split = {}
+        for split in splits:
+            by_k = grp[grp["split_regime"] == split].groupby("k", observed=True)
+            testable = sum(
+                (len(g) == len(controls)) and bool((g["rotulo"] != "insuficiente").all())
+                for _, g in by_k
+            )
+            wins = sum(bool((g["rotulo"] == "vence").sum() == len(controls)) for _, g in by_k)
+            per_split[split] = (testable, wins)
+        if any(t < min_horizons for t, _ in per_split.values()):
+            verdict = "nao testavel"
+        elif all(w >= min_horizons for _, w in per_split.values()):
+            verdict = "estrutura paga"
+        else:
+            verdict = "nao paga"
+        out.append({"estrato": estrato, "veredito": verdict,
+                    **{f"horizontes_vencidos_{s}": w for s, (_, w) in per_split.items()}})
+    return pd.DataFrame(out)

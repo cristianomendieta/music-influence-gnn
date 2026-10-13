@@ -41,6 +41,7 @@ A escada de comparação deu o caso 3 nos dois splits: a proposta não supera o 
 | "Vence" e "perde" | IC bootstrap 95% da diferença de erro quadrático inteiro abaixo (acima) de zero **e** `p` Holm < 0,05 | Mesma regra do item 10, para ser comparável | y |
 | Equivalência | IC inteiro dentro de ±5% do erro quadrático médio por música do sem_grafo na célula | 5% de MSE ≈ 2,5% de RMSE, perto das diferenças observadas entre variantes (1% a 5%). É a margem mais arbitrária da spec | y |
 | "A estrutura paga" num estrato | Vence **os dois** controles em ≥ 2 de 3 horizontes, **nos dois splits** | O sem_grafo isola capacidade, o embaralhado isola topologia; só ganhar dos dois é atribuível a estrutura relacional; replicar entre splits protege contra o período | y |
+| Leitura estrita de "vence os dois controles em ≥ 2 de 3 horizontes" | O horizonte conta quando vence **os dois controles no mesmo k**. Um split com menos de 2 horizontes testáveis torna o estrato `nao testavel` | A leitura frouxa (cada controle em ≥ 2 horizontes, possivelmente diferentes) é mais fácil de passar. Fixada na implementação (T5), antes de qualquer número | y |
 | Predições usadas | Média das 3 seeds por origem, como no item 10; sensibilidade por seed individual como análise secundária | Comparabilidade com a tabela do item 10; a dispersão entre seeds não pode sumir do mapa | y |
 | Estrato por grau de cotrajetória | Fica como P3, exige o grafo (torch), roda só no Colab | O resto usa só pandas | y |
 | Como se entrega | Funções puras em `src/music_diffusion_gnn/evaluation/{strata,mapa}.py` com testes leves, e a execução num notebook Colab `notebooks/item22_mapa_estrutura_colab.ipynb` | Pedido do autor: a execução pesada (bootstrap de 10.000 reamostras em dezenas de células) não roda na máquina local | y |
@@ -145,9 +146,9 @@ A escada de comparação deu o caso 3 nos dois splits: a proposta não supera o 
 | MAP-01 | P1: Estratificação causal | T1 | Implementing |
 | MAP-02 | P1: Estratificação causal (sem vazamento) | T1 | Verified (T1) |
 | MAP-03 | P1: Estratificação causal (contagens e corte de 30) | T2 | Implementing |
-| MAP-04 | P1: Veredito por estrato (teste e IC) | T3 | Implementing |
-| MAP-05 | P1: Veredito por estrato (família do Holm, rótulos) | T4 | Implementing |
-| MAP-06 | P1: Veredito por estrato ("estrutura paga" e relatório) | Specify | Pending |
+| MAP-04 | P1: Veredito por estrato (teste e IC) | T3, T5 | Implementing |
+| MAP-05 | P1: Veredito por estrato (família do Holm, rótulos) | T4, T5 | Implementing |
+| MAP-06 | P1: Veredito por estrato ("estrutura paga" e relatório) | T5 | Implementing |
 | MAP-07 | P2: Sensibilidade (seeds, chart, margem) | Specify | Pending |
 | MAP-08 | P3: Grau de cotrajetória | Specify | Pending |
 

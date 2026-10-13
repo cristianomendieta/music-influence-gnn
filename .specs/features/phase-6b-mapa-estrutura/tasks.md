@@ -185,13 +185,13 @@ Sete tasks, uma única leva: execução inline, sem sub-agentes. O P3 (grau de c
 
 **Done when**:
 
-- [ ] Num conjunto sintético em que a proposta vence os dois controles num estrato nos dois splits em 2 de 3 horizontes, `structure_pays` marca esse estrato e só ele
-- [ ] Vencer em um split e não no outro **não** marca `estrutura paga`; vencer só um dos controles também não
-- [ ] Um estrato `insuficiente` em um dos splits fica `não testável` e nunca `estrutura paga`
-- [ ] A tabela tem uma linha por (split, estrato, k, contraste) testável, e o rótulo de cada linha é recomputável a partir de IC e `p` Holm da própria linha
-- [ ] Uma música presente nos dois charts entra uma vez por célula
-- [ ] Gate check passes: `$PY -m pytest tests/test_mapa.py -q`
-- [ ] Test count: ≥ 18 tests pass in total (no silent deletions)
+- [x] Num conjunto sintético em que a proposta vence os dois controles num estrato nos dois splits em 2 de 3 horizontes, `structure_pays` marca esse estrato e só ele
+- [x] Vencer em um split e não no outro **não** marca `estrutura paga`; vencer só um dos controles também não
+- [x] Um estrato `insuficiente` em um dos splits fica `não testável` e nunca `estrutura paga`
+- [x] A tabela tem uma linha por (split, estrato, k, contraste) testável, e o rótulo de cada linha é recomputável a partir de IC e `p` Holm da própria linha
+- [x] Uma música presente nos dois charts entra uma vez por célula
+- [x] Gate check passes: `$PY -m pytest tests/test_mapa.py -q`
+- [x] Test count: 52 tests pass across test_strata.py and test_mapa.py (≥ 18 planned in test_mapa.py: 28 there; no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
