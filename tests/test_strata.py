@@ -4,7 +4,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from music_diffusion_gnn.evaluation.strata import STRATA, assign_strata
+from music_diffusion_gnn.evaluation.strata import STRATA, assign_strata, strata_counts
 
 
 def _onchart(**series: list[int]) -> set[tuple[str, str, int]]:
@@ -137,3 +137,61 @@ def test_future_only_series_does_not_change_earlier_origins():
 def test_origin_week_before_the_first_week_of_the_data_is_estreia():
     oc = _onchart(a__viral50=[0, 1, 2])
     assert _stratum(oc, "a", "viral50", -3) == "estreia"
+
+
+# ------------------------------------------------- MAP-01 (AC4): origins without a series
+
+def test_origin_outside_the_series_is_sem_serie_and_the_rest_is_untouched():
+    oc = _onchart(a__top200=list(range(10, 40)))
+    origins = pd.DataFrame({
+        "song_id": ["a", "ghost", "a"], "chart": ["top200", "top200", "viral50"],
+        "origin_week": [30, 30, 30],
+    })
+    out = assign_strata(origins, oc, series_keys={("a", "top200"), ("a", "viral50")})
+    assert list(out) == ["maduro_mono", "sem_serie", "estreia"]
+
+
+def test_series_keys_none_keeps_every_origin_in_the_five_strata():
+    oc = _onchart(a__top200=[10])
+    out = assign_strata(_origins("ghost", "top200", [30]), oc)
+    assert out.iloc[0] == "estreia"
+
+
+# ---------------------------------------------------- MAP-03: counts and the 30-song cut
+
+def _cells(n_songs: int, n_origins: int, *, estrato="jovem", split="current", k=1, charts=("top200",)):
+    rows = []
+    for i in range(n_origins):
+        rows.append({"split_regime": split, "estrato": estrato, "k": k,
+                     "song_id": f"s{i % n_songs}", "chart": charts[i % len(charts)]})
+    return pd.DataFrame(rows)
+
+
+def test_counts_report_origins_and_distinct_songs():
+    out = strata_counts(_cells(n_songs=10, n_origins=100))
+    row = out.iloc[0]
+    assert (row.n_origens, row.n_musicas) == (100, 10)
+
+
+def test_cell_with_29_songs_is_insuficiente_and_30_is_not():
+    assert strata_counts(_cells(29, 29)).iloc[0].insuficiente
+    assert not strata_counts(_cells(30, 30)).iloc[0].insuficiente
+
+
+def test_min_songs_is_configurable():
+    assert not strata_counts(_cells(10, 10), min_songs=10).iloc[0].insuficiente
+
+
+def test_a_song_in_both_charts_counts_once_in_n_musicas():
+    out = strata_counts(_cells(n_songs=5, n_origins=10, charts=("viral50", "top200")))
+    assert out.iloc[0].n_musicas == 5 and out.iloc[0].n_origens == 10
+
+
+def test_counts_sum_back_to_the_input_origins_including_sem_serie():
+    parts = [_cells(40, 80, estrato=e, k=k)
+             for e in (*STRATA, "sem_serie") for k in (1, 2, 4)]
+    df = pd.concat(parts, ignore_index=True)
+    out = strata_counts(df)
+    assert out.n_origens.sum() == len(df)
+    assert set(out.estrato) == {*STRATA, "sem_serie"}
+    assert len(out) == 6 * 3

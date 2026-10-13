@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 
 STRATA = ("estreia", "reentrada", "jovem", "maduro_mono", "maduro_multi")
+SEM_SERIE = "sem_serie"   # origin whose (song, chart) has no row in timeseries.parquet
 
 
 def assign_strata(
@@ -18,6 +19,7 @@ def assign_strata(
     *,
     young_weeks: int = 8,
     wave_gap: int = 4,
+    series_keys: set[tuple[str, str]] | None = None,
 ) -> pd.Series:
     """Stratum of each ``(song_id, chart, origin_week)`` row of ``origins``.
 
@@ -30,6 +32,10 @@ def assign_strata(
     - ``maduro_mono`` / ``maduro_multi``: ``w`` on-chart, older than that, with one
       or several waves up to ``w``. Two on-chart weeks belong to different waves
       when at least ``wave_gap`` consecutive off-chart weeks separate them.
+
+    When ``series_keys`` (the ``(song_id, chart)`` pairs present in the time
+    series) is given, an origin outside it is ``sem_serie`` instead of ``estreia``:
+    "never seen on chart" and "not in the data at all" are different things.
     """
     stages = np.empty(len(origins), dtype=object)
     stages[:] = "estreia"
@@ -74,4 +80,27 @@ def assign_strata(
         )
         stages[idx] = stage
 
+    if series_keys is not None:
+        known = pd.MultiIndex.from_arrays(
+            [origins["song_id"].to_numpy(), origins["chart"].to_numpy()]
+        ).isin(list(series_keys))
+        stages[~known] = SEM_SERIE
+
     return pd.Series(stages, index=origins.index, name="estrato")
+
+
+def strata_counts(origins: pd.DataFrame, *, min_songs: int = 30) -> pd.DataFrame:
+    """Origins and distinct songs per ``(split_regime, estrato, k)`` cell.
+
+    ``origins`` needs ``split_regime``, ``estrato``, ``k`` and ``song_id`` (one row
+    per origin, a single model's rows). A song in both charts counts once in
+    ``n_musicas``. ``insuficiente`` is true when ``n_musicas < min_songs``: the
+    cell is reported but kept out of the tests and the Holm family.
+    """
+    out = (
+        origins.groupby(["split_regime", "estrato", "k"], observed=True)
+        .agg(n_origens=("song_id", "size"), n_musicas=("song_id", "nunique"))
+        .reset_index()
+    )
+    out["insuficiente"] = out["n_musicas"] < min_songs
+    return out

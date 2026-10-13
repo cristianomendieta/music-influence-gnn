@@ -100,11 +100,11 @@ Sete tasks, uma única leva: execução inline, sem sub-agentes. O P3 (grau de c
 
 **Done when**:
 
-- [ ] Uma origem cujo (música, chart) não está em `series_keys` recebe `sem_serie` e é contada à parte no relatório de contagens
-- [ ] `strata_counts` devolve `n_origens` e `n_musicas` corretos numa tabela sintética com contagem conhecida, e `insuficiente = True` exatamente quando `n_musicas < 30` (29 sim, 30 não)
-- [ ] A soma das origens dos cinco estratos mais `sem_serie` é igual ao total de origens de entrada
-- [ ] Gate check passes: `$PY -m pytest tests/test_strata.py -q`
-- [ ] Test count: ≥ 14 tests pass in total (T1 + T2, no silent deletions)
+- [x] Uma origem cujo (música, chart) não está em `series_keys` recebe `sem_serie` e é contada à parte no relatório de contagens
+- [x] `strata_counts` devolve `n_origens` e `n_musicas` corretos numa tabela sintética com contagem conhecida, e `insuficiente = True` exatamente quando `n_musicas < 30` (29 sim, 30 não)
+- [x] A soma das origens dos cinco estratos mais `sem_serie` é igual ao total de origens de entrada
+- [x] Gate check passes: `$PY -m pytest tests/test_strata.py -q`
+- [x] Test count: 24 tests pass in total (≥ 14 planned; no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
