@@ -255,7 +255,7 @@
 - [x] **Itens 06, 07, 08** — 18 treinos concluídos (Colab, 2026-09-01 a 10-01). Ver Phase 6 abaixo.
 - [x] **Item 09** — Modo 2 e ablação refeitos sobre os checkpoints novos, `cooccurs` incluído.
 - [x] **Item 10** — comparação consolidada e veredito do ADR-0001: caso 3, nos dois splits.
-- [ ] **Phase 6b** — mapa de onde a estrutura paga (`.specs/features/phase-6b-mapa-estrutura/`). Spec aprovada em 2026-10-13; implementação em notebook Colab.
+- [~] **Phase 6b** — mapa de onde a estrutura paga (`.specs/features/phase-6b-mapa-estrutura/`). Código, 57 testes e notebook `item22_mapa_estrutura_colab.ipynb` prontos em 2026-10-13 (`validation.md`, autoverificação). **Falta:** empurrar o repo, rodar o notebook no Colab, copiar `relatorio.md` para `docs/mapa-onde-a-estrutura-paga.md`. O P3 (grau de cotrajetória, MAP-08) fica para depois.
 - [ ] **Phase 7** — atenção (`.specs/features/phase-7-atencao/` + ADR-0006). Spec aprovada e ADR-0006 aceito em 2026-10-13; implementação em notebooks Colab.
 
 ## Consolidação documental e novo marco (2026-08-18)

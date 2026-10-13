@@ -1,6 +1,6 @@
 # Phase 6b — Mapa de onde a estrutura paga Specification
 
-**Status:** aprovada em 2026-10-13 (parâmetros confirmados pelo autor). Entrega executável em notebook para o Colab.
+**Status:** aprovada em 2026-10-13 (parâmetros confirmados pelo autor). Código e testes entregues e verificados (`validation.md`); falta rodar o notebook no Colab.
 **Depende de:** `results/comparacao_final/predicoes_cinco_modelos.parquet` (item 10) e `data/processed/timeseries.parquet`.
 **Origem:** [ADR-0001](../../../docs/adr/0001-precompromisso-de-falseamento.md), caso 3: "o trabalho passa a entregar o mapa de **onde** a estrutura paga e reporta equivalência no resto".
 
@@ -143,16 +143,16 @@ A escada de comparação deu o caso 3 nos dois splits: a proposta não supera o 
 
 | Requirement ID | Story | Phase | Status |
 |---|---|---|---|
-| MAP-01 | P1: Estratificação causal | T1 | Implementing |
-| MAP-02 | P1: Estratificação causal (sem vazamento) | T1 | Verified (T1) |
-| MAP-03 | P1: Estratificação causal (contagens e corte de 30) | T2, T7 | Implementing |
-| MAP-04 | P1: Veredito por estrato (teste e IC) | T3, T5 | Implementing |
-| MAP-05 | P1: Veredito por estrato (família do Holm, rótulos) | T4, T5 | Implementing |
+| MAP-01 | P1: Estratificação causal | T1 | Verified |
+| MAP-02 | P1: Estratificação causal (sem vazamento) | T1 | Verified |
+| MAP-03 | P1: Estratificação causal (contagens e corte de 30) | T2, T7 | Verified |
+| MAP-04 | P1: Veredito por estrato (teste e IC) | T3, T5 | Verified |
+| MAP-05 | P1: Veredito por estrato (família do Holm, rótulos) | T4, T5 | Verified |
 | MAP-06 | P1: Veredito por estrato ("estrutura paga" e relatório) | T5, T7 | Implementing |
-| MAP-07 | P2: Sensibilidade (seeds, chart, margem) | T6 | Implementing |
+| MAP-07 | P2: Sensibilidade (seeds, chart, margem) | T6 | Verified |
 | MAP-08 | P3: Grau de cotrajetória | Specify | Pending |
 
-**Coverage:** 8 total, 0 mapped to tasks, 8 unmapped ⚠️
+**Coverage:** 8 total, 7 mapped to tasks (MAP-08 adiado, P3), 6 verified, MAP-06 aguarda a execução no Colab
 
 ---
 
