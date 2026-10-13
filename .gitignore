@@ -9,6 +9,8 @@ venv/
 # Results / artifacts (track structure via .gitkeep, not contents)
 results/*
 !results/.gitkeep
+# Comparação final da escada (~5 MB): é o insumo do capítulo de resultados e do mapa (Phase 6b).
+!results/comparacao_final/
 wandb/
 lightning_logs/
 *.ckpt

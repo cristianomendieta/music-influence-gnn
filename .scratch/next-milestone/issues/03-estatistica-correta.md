@@ -6,7 +6,7 @@ Três correções. Primeira: o Wilcoxon do Modo 2 hoje pareia erros por **origem
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** concluído — código em `acd11b3` e usado na rodada de 2026-10-01 (item 10). Caixas de verificação não remarcadas uma a uma.
 
 - [ ] O teste pareado do Modo 2 opera sobre erro por música, não por origem de previsão
 - [ ] Cada comparação entre dois modelos reporta IC bootstrap da diferença

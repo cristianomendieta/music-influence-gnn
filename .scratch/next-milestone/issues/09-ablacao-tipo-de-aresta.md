@@ -12,7 +12,7 @@ artefato, não podem ser citados.
 
 **Blocked by:** 06
 
-**Status:** ready-for-agent
+**Status:** concluído em 2026-10-01 — harness corrigido, nenhum delta exatamente zero; `cooccurs` ≈ 0 com canal vivo.
 
 - [ ] Delta de erro por tipo de aresta, nos dois recortes e nos dois regimes de chart
 - [ ] Resultado agregado entre as seeds do modelo final

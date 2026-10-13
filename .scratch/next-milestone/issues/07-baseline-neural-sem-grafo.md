@@ -6,7 +6,7 @@ Isola quanto do ganho vem de capacidade neural e quanto vem de estrutura relacio
 
 **Blocked by:** 02, 03, 04
 
-**Status:** ready-for-agent
+**Status:** concluído em 2026-10-01 — 6 treinos do sem_grafo, 453.121 parâmetros iguais à proposta.
 
 - [ ] O modelo não acessa nenhuma aresta, e existe teste que garante isso
 - [ ] Orçamento de parâmetros comparável ao da proposta, com o número declarado

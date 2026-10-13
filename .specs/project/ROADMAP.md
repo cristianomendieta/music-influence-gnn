@@ -81,7 +81,9 @@ Relatórios: [`docs/genero-estrutural-retreino.md`](../../docs/genero-estrutural
 checkpoint novo. O `delta_rmse` zero de `cooccurs` no item 04 foi medido num canal morto; com o
 canal vivo, um zero persistente vira afirmação sobre utilidade, não sobre propagação.
 
-### Phase 6 — Escada de comparação (set–out)
+### Phase 6 — Escada de comparação (set–out) — CONCLUÍDA 2026-10-01
+
+**Desfecho: caso 3 do ADR-0001 nos dois splits.** Relatório em [`docs/escada-de-comparacao.md`](../../docs/escada-de-comparacao.md).
 
 Cinco modelos sob o mesmo protocolo, mesmas features e mesmo eixo semanal:
 
@@ -113,11 +115,21 @@ RMSE entre modelos, Wilcoxon reagregando os erros **por música** antes do teste
 código atual pareia por origem de previsão, o que infla a significância), correção
 de Holm entre as células.
 
+### Phase 6b — Mapa de onde a estrutura paga (out)
+
+Exigido pelo caso 3 do ADR-0001. Estratifica as predições do Modo 2 que já existem, sem
+re-treino, por histórico curto, entrada no chart e reentrada em nova onda, com estratos
+definidos só por informação anterior à origem. Spec em
+[`phase-6b-mapa-estrutura`](../features/phase-6b-mapa-estrutura/spec.md).
+
 ### Phase 7 — Arquitetura alternativa com atenção (out–nov)
 
-HGT ou GAT por relação no lugar do HeteroGraphSAGE, cabeça temporal e protocolo
-fixos. Verifica se a vantagem é robusta à arquitetura e fornece pesos de atenção
-por tipo de aresta. Previsto no cronograma aprovado; é extensão, não pré-requisito.
+GATv2 por relação, lendo `edge_attr`, no lugar do HeteroGraphSAGE; cabeça temporal e protocolo
+fixos. Com o caso 3 fechado, a pergunta deixa de ser "a vantagem é robusta?" e passa a ser
+"o nulo é do encoder?": a média simples do SAGE pode diluir a vizinhança (grau de entrada de até 280
+na cotrajetória). Pré-compromisso em [ADR-0006](../../docs/adr/0006-precompromisso-fase-atencao.md),
+spec em [`phase-7-atencao`](../features/phase-7-atencao/spec.md). HGT fica como robustez, só se
+sobrar tempo: não lê `edge_attr` e não devolve pesos de atenção. Extensão, não pré-requisito.
 
 ### Phase 8 — Redação e defesa (dez–jan)
 

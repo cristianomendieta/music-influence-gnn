@@ -76,7 +76,7 @@ regime de split) e a config vencedora re-treinada:
 |---|---|---|
 | Diagnóstico | Veredito sobre a ablação zerada | ago |
 | Gênero estrutural | Novos atributos e grafo reconstruído | ago–set |
-| Escada de comparação | Persistência, SIR, sem-grafo, grafo embaralhado, proposta | set–out |
+| Escada de comparação | Persistência, SIR, sem-grafo, grafo embaralhado, proposta — **fechada 2026-10-01** | set–out |
 | Arquitetura com atenção | HGT ou GAT no lugar do HeteroGraphSAGE | out–nov |
 | Redação e defesa | Comparação única, discussão, conclusão | dez–jan |
 
@@ -106,7 +106,13 @@ Podem começar já: **01** (recorte on-chart), **02** (regime de split parametri
 **13** (dataset na introdução), **16** (fórmula da cabeça temporal no documento),
 **17** (correções pontuais em slides e specs), **20** (limitações de arquitetura no texto).
 
-Caminho crítico: **01 → 04 → 21 → 05 → 06 → {08, 09} → 10**. Os itens **04**, **21** e
-**05** estão fechados; a frente ativa é o **06** (5 dos 6 treinos da proposta faltando). Os itens **18** e **19**
-(cotrajetória por chart, cabeça sensível ao chart) pendem de **06** e são variações de
-arquitetura, não pré-requisito do argumento central.
+Caminho crítico: **01 → 04 → 21 → 05 → 06 → {08, 09} → 10**. **Fechado em 2026-10-01.**
+Veredito do ADR-0001: **caso 3, a tese vira condicional**, nos dois splits
+([`docs/escada-de-comparacao.md`](docs/escada-de-comparacao.md)). A proposta não supera o
+baseline neural sem grafo nem o grafo embaralhado; todos superam o SIR.
+
+Frentes ativas: o **mapa de onde a estrutura paga** (exigido pelo caso 3,
+[`phase-6b-mapa-estrutura`](.specs/features/phase-6b-mapa-estrutura/spec.md)) e a **arquitetura com
+atenção** (item 15, com pré-compromisso no [ADR-0006](docs/adr/0006-precompromisso-fase-atencao.md)).
+Os itens **18** e **19** (cotrajetória por chart, cabeça sensível ao chart) deixam de ser
+variações soltas: o 18 entra no desenho da atenção, o 19 fica como extensão.

@@ -252,9 +252,11 @@
 - [ ] Executar `/tlc-spec-driven implement phase-3-evaluation` (rodar T1 → T12).
 - [x] **Item 21** — sonda do canal de gênero (pesos iniciais + treinados): canal utilizável. 2026-08-31.
 - [x] **Item 05** — gênero estrutural + re-treino no regime `current`. 2026-08-31.
-- [ ] **Item 06** — completar a matriz: `current` seeds 43/44 e `pre_pandemia` seeds 42/43/44 (5 treinos).
-- [ ] **Item 09** — refazer a ablação por tipo de aresta sobre o checkpoint novo, `cooccurs` incluído,
-      mais a sonda de `has_genre`/`rev_has_genre` herdada do item 21.
+- [x] **Itens 06, 07, 08** — 18 treinos concluídos (Colab, 2026-09-01 a 10-01). Ver Phase 6 abaixo.
+- [x] **Item 09** — Modo 2 e ablação refeitos sobre os checkpoints novos, `cooccurs` incluído.
+- [x] **Item 10** — comparação consolidada e veredito do ADR-0001: caso 3, nos dois splits.
+- [ ] **Phase 6b** — mapa de onde a estrutura paga (`.specs/features/phase-6b-mapa-estrutura/`). Spec aprovada em 2026-10-13; implementação em notebook Colab.
+- [ ] **Phase 7** — atenção (`.specs/features/phase-7-atencao/` + ADR-0006). Spec aprovada e ADR-0006 aceito em 2026-10-13; implementação em notebooks Colab.
 
 ## Consolidação documental e novo marco (2026-08-18)
 
@@ -385,6 +387,40 @@ utilidade do gênero, não sobre a propagação — afirmação bem mais forte e
 **Pendências que migraram para o item 06:** regime `pre_pandemia` (`absent_from_network` sobe de
 20,6% para 30,8% dos gêneros, então a representação muda de verdade entre os regimes) e as seeds
 43 e 44. 1 dos 6 treinos da matriz já está feito.
+
+
+## Phase 6 — Escada de comparação: fechada (2026-10-01, registrada em 2026-10-13)
+
+18 treinos (proposta, sem_grafo, embaralhado × 2 splits × 3 seeds, 453.121 parâmetros em todos)
+e Modo 2 em k ∈ {1,2,4}. Relatório completo: [`docs/escada-de-comparacao.md`](../../docs/escada-de-comparacao.md).
+Artefatos da comparação em `results/comparacao_final/` (gitignored, copiados para esta máquina em
+2026-10-13); o Modo 2 por modelo e a ablação estão só no Drive (`avaliacao_matriz/`).
+
+**Veredito do ADR-0001: caso 3, a tese vira condicional, nos dois splits.** A proposta vence o
+sem_grafo em 0/6 (`current`) e 1/6 (`pre_pandemia`) células on-chart, e o embaralhado em 0/6 e 1/6.
+No `current` o sem_grafo vence a proposta no Viral 50, k=4 (RMSE +9%). A ordenação muda entre
+splits: sem_grafo primeiro no `current`, proposta primeira no `pre_pandemia`. Todos batem o SIR.
+
+**Achados que o texto precisa carregar:**
+
+- O `val_mse` favorece a proposta nas 6 combinações, o Modo 2 on-chart não. Discrepância a explicar.
+- A ablação mede dependência, não necessidade: `cotrajectory` +0,069 de RMSE ao remover, mas o
+  sem_grafo, sem nenhuma aresta, empata.
+- `cooccurs` mede ~zero com o canal vivo: o achado sobre gênero é de utilidade, não de propagação.
+- Os testes do item 10 rodam sobre a média das 3 seeds (comitê), o que favorece os neurais frente
+  ao SIR e à persistência e esconde a dispersão entre seeds (mediana 0,0027, máx. 0,027).
+- O caso 3 do ADR diz "empata", mas existe uma célula em que a proposta perde. O ADR não cobre isso.
+
+**Sensibilidade (pós-hoc, não altera o veredito):** Holm só sobre as 12 comparações primárias dá
+3/6 contra o embaralhado no `pre_pandemia`. A regra pede 4/6.
+
+**Lição:** o pré-compromisso funcionou. O desfecho foi decidido por regra escrita antes do número,
+e a regra era restritiva o bastante para não passar por ruído. Mas a regra precisou de duas
+definições que o ADR não trazia (família do Holm, tratamento do "perde"). Nas próximas fases, o
+ADR fixa a família e os três desfechos (vence, empata, perde) antes de qualquer treino.
+
+**Próximos passos:** Phase 6b (mapa, exigido pelo caso 3) e Phase 7 (atenção, com
+[ADR-0006](../../docs/adr/0006-precompromisso-fase-atencao.md)). Texto em paralelo (itens 11–14, 16, 17, 20).
 
 
 ## Deferred ideas

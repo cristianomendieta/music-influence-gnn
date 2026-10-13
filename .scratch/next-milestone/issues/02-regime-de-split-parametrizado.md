@@ -6,7 +6,7 @@ Isto é prefactor: sem ele, acrescentar o segundo regime vira uma edição espal
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** concluído — código em `acd11b3` e usado na rodada de 2026-10-01 (item 10). Caixas de verificação não remarcadas uma a uma.
 
 - [ ] Os dois regimes de split são selecionáveis por configuração, sem edição de código
 - [ ] Rodar com o regime atual reproduz os números de hoje

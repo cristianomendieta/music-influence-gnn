@@ -6,7 +6,7 @@
 
 **Blocked by:** 05, 06
 
-**Status:** ready-for-agent
+**Status:** concluído em 2026-10-01 — 6 treinos do embaralhado; leitura de orçamento casado só na seed 42.
 
 - [ ] O embaralhamento preserva distribuição de grau e contagem por tipo de aresta, verificado por teste
 - [ ] O embaralhamento respeita a restrição temporal das arestas, sem criar vazamento

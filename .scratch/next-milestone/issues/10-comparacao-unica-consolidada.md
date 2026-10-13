@@ -6,7 +6,7 @@
 
 **Blocked by:** 06, 07, 08, 09
 
-**Status:** ready-for-agent
+**Status:** concluído em 2026-10-01 — veredito do ADR-0001: caso 3 nos dois splits.
 
 - [ ] Uma tabela com os cinco modelos, comparáveis célula a célula
 - [ ] Cada comparação traz IC da diferença e valor-p corrigido

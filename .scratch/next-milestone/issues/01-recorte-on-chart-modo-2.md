@@ -6,7 +6,7 @@ Contexto: no período de teste, ~95% dos alvos do Modo 2 são semanas fora do ch
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** concluído — código em `acd11b3` e usado na rodada de 2026-10-01 (item 10). Caixas de verificação não remarcadas uma a uma.
 
 - [ ] O Modo 2 produz, para cada célula (regime × horizonte), o erro nas duas leituras
 - [ ] A leitura on-chart aparece como principal nas tabelas geradas
