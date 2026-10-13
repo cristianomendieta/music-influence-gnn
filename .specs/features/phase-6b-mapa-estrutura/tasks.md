@@ -10,7 +10,7 @@ Implement these tasks with the `tlc-spec-driven` skill: **activate it by name an
 
 **Spec**: `.specs/features/phase-6b-mapa-estrutura/spec.md`
 **Design**: nenhum. Feature pequena de funções puras sobre pandas; o desenho está inline nas tasks.
-**Status**: Approved (2026-10-13)
+**Status**: Done (2026-10-13); falta a execução no Colab e o Verifier
 
 **Restrição do autor:** a execução pesada roda no Colab. Localmente só rodam os testes unitários (pandas, segundos). Nenhuma task executa o notebook, o bootstrap de 10.000 reamostras ou qualquer carga do grafo aqui.
 
@@ -219,7 +219,7 @@ Sete tasks, uma única leva: execução inline, sem sub-agentes. O P3 (grau de c
 - [x] `by_chart_rmse` devolve a diferença de RMSE por (estrato, chart) com os valores corretos de uma tabela conhecida e não produz `p` nem rótulo
 - [x] `margin_sensitivity` lista exatamente as células cujo rótulo muda entre 2,5%, 5% e 10%, e uma célula com IC largo fora de qualquer margem não aparece
 - [x] Gate check passes: `$PY -m pytest tests/test_mapa.py -q`
-- [x] Test count: 59 tests pass across the two files (≥ 22 planned; no silent deletions)
+- [x] Test count: 55 tests pass across the two files (≥ 22 planned; no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
@@ -243,14 +243,14 @@ Sete tasks, uma única leva: execução inline, sem sub-agentes. O P3 (grau de c
 
 **Done when**:
 
-- [ ] O notebook é um JSON válido (nbformat 4) e todas as células de código compilam (`ast.parse`, ignorando magics `%`)
-- [ ] A primeira célula de texto traz a hipótese a priori, os cinco estratos, `H = 8`, `wave_gap = 4`, `min_songs = 30` e a margem de 5%, antes de qualquer célula que leia resultado
-- [ ] O notebook procura as predições primeiro em `results/comparacao_final/` do clone e depois no Drive, e aborta com mensagem clara se não achar em nenhum
-- [ ] O notebook não importa torch nem carrega o grafo, e não tem célula que reconstrua predições
-- [ ] O notebook não tem saída gravada (nada executado aqui)
-- [ ] A última célula escreve a tabela do mapa, as contagens e a sensibilidade em `results/mapa_estrutura/` e imprime o veredito por estrato
-- [ ] Gate check passes: `$PY scripts/check_notebook.py notebooks/item22_mapa_estrutura_colab.ipynb` e o Build gate completo
-- [ ] Test count: 22+ tests still pass (no silent deletions)
+- [x] O notebook é um JSON válido (nbformat 4) e todas as células de código compilam (`ast.parse`, ignorando magics `%`)
+- [x] A primeira célula de texto traz a hipótese a priori, os cinco estratos, `H = 8`, `wave_gap = 4`, `min_songs = 30` e a margem de 5%, antes de qualquer célula que leia resultado
+- [x] O notebook procura as predições primeiro em `results/comparacao_final/` do clone e depois no Drive, e aborta com mensagem clara se não achar em nenhum
+- [x] O notebook não importa torch nem carrega o grafo, e não tem célula que reconstrua predições
+- [x] O notebook não tem saída gravada (nada executado aqui)
+- [x] A última célula escreve a tabela do mapa, as contagens e a sensibilidade em `results/mapa_estrutura/` e imprime o veredito por estrato
+- [x] Gate check passes: `$PY scripts/check_notebook.py notebooks/item22_mapa_estrutura_colab.ipynb` e o Build gate completo
+- [x] Test count: 55 tests still pass (no silent deletions)
 
 **Tests**: none
 **Gate**: build
