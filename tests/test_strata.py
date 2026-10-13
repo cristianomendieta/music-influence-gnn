@@ -114,6 +114,7 @@ def test_all_five_strata_appear_in_a_series_built_to_cover_them():
     list(range(10, 40)),
     [10, 11, 12] + list(range(17, 31)),
     [3, 4, 9, 10, 11, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38],
+    list(range(10, 31)) + list(range(35, 41)),   # mature first wave, second wave in the future
 ])
 def test_stratum_is_invariant_to_truncating_the_series_at_the_origin(weeks):
     full = _onchart(a__top200=weeks)
@@ -123,6 +124,13 @@ def test_stratum_is_invariant_to_truncating_the_series_at_the_origin(weeks):
         truncated = {(s, c, wk) for (s, c, wk) in full if wk <= w}
         on_cut = assign_strata(origins[origins.origin_week == w], truncated)
         assert on_cut.iloc[0] == on_full[origins.origin_week == w].iloc[0], f"w={w}"
+
+
+def test_a_mature_origin_is_not_multi_wave_because_of_a_wave_that_starts_later():
+    # first wave 10-30, 4 weeks off, second wave 35-40: at w=25 only one wave has happened
+    oc = _onchart(a__top200=list(range(10, 31)) + list(range(35, 41)))
+    assert _stratum(oc, "a", "top200", 25) == "maduro_mono"
+    assert _stratum(oc, "a", "top200", 38) == "maduro_multi"
 
 
 def test_future_only_series_does_not_change_earlier_origins():
