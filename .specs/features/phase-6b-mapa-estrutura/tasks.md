@@ -157,11 +157,11 @@ Sete tasks, uma única leva: execução inline, sem sub-agentes. O P3 (grau de c
 
 **Done when**:
 
-- [ ] `label_cell` devolve `vence` só com IC inteiro abaixo de zero **e** `p_holm < 0,05`; `perde` com IC inteiro acima de zero e `p_holm < 0,05`; `equivalente` com IC dentro de ±margem; `inconclusivo` no resto; cada rótulo tem um caso sintético, e os limites (`p_holm = 0,05`, IC tocando zero) estão cobertos
-- [ ] A regra de precedência está testada: IC dentro da margem **e** abaixo de zero com `p_holm` pequeno devolve `vence`, não `equivalente`
-- [ ] `holm_family` produz os mesmos `p` ajustados que `holm_correction` aplicada à lista de células testadas, excluindo as `insuficiente`; o tamanho da família é `≤ 30` por split
-- [ ] Gate check passes: `$PY -m pytest tests/test_mapa.py -q`
-- [ ] Test count: ≥ 12 tests pass in total (no silent deletions)
+- [x] `label_cell` devolve `vence` só com IC inteiro abaixo de zero **e** `p_holm < 0,05`; `perde` com IC inteiro acima de zero e `p_holm < 0,05`; `equivalente` com IC dentro de ±margem; `inconclusivo` no resto; cada rótulo tem um caso sintético, e os limites (`p_holm = 0,05`, IC tocando zero) estão cobertos
+- [x] A regra de precedência está testada: IC dentro da margem **e** abaixo de zero com `p_holm` pequeno devolve `vence`, não `equivalente`
+- [x] `holm_family` produz os mesmos `p` ajustados que `holm_correction` aplicada à lista de células testadas, excluindo as `insuficiente`; o tamanho da família é `≤ 30` por split
+- [x] Gate check passes: `$PY -m pytest tests/test_mapa.py -q`
+- [x] Test count: 18 tests pass in total in test_mapa.py (≥ 12 planned; no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
