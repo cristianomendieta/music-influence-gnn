@@ -71,12 +71,12 @@ Sete tasks, uma única leva: execução inline, sem sub-agentes. O P3 (grau de c
 
 **Done when**:
 
-- [ ] Cada origem recebe exatamente um dos cinco estratos; a tabela verdade da spec (estreia, reentrada, jovem, maduro_mono, maduro_multi) é reproduzida em séries sintéticas de estágio conhecido
-- [ ] Os limites estão testados: idade 8 é `jovem`, idade 9 é `maduro_*`; hiato de 3 semanas fora do chart não abre onda, hiato de 4 abre
-- [ ] Teste de truncamento: o estrato com a série completa é idêntico ao estrato com a série cortada em `origin_week`, para todas as origens da série sintética (MAP-02, AC3 da spec)
-- [ ] Origem anterior à primeira semana on-chart da série cai em `estreia`
-- [ ] Gate check passes: `$PY -m pytest tests/test_strata.py -q`
-- [ ] Test count: ≥ 8 tests pass (no silent deletions)
+- [x] Cada origem recebe exatamente um dos cinco estratos; a tabela verdade da spec (estreia, reentrada, jovem, maduro_mono, maduro_multi) é reproduzida em séries sintéticas de estágio conhecido
+- [x] Os limites estão testados: idade 8 é `jovem`, idade 9 é `maduro_*`; hiato de 3 semanas fora do chart não abre onda, hiato de 4 abre
+- [x] Teste de truncamento: o estrato com a série completa é idêntico ao estrato com a série cortada em `origin_week`, para todas as origens da série sintética (MAP-02, AC3 da spec)
+- [x] Origem anterior à primeira semana on-chart da série cai em `estreia`
+- [x] Gate check passes: `$PY -m pytest tests/test_strata.py -q`
+- [x] Test count: 17 tests pass (≥ 8 planned; no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
