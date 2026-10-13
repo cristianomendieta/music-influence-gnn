@@ -145,7 +145,7 @@ A escada de comparação deu o caso 3 nos dois splits: a proposta não supera o 
 | MAP-01 | P1: Estratificação causal | T1 | Implementing |
 | MAP-02 | P1: Estratificação causal (sem vazamento) | T1 | Verified (T1) |
 | MAP-03 | P1: Estratificação causal (contagens e corte de 30) | T2 | Implementing |
-| MAP-04 | P1: Veredito por estrato (teste e IC) | Specify | Pending |
+| MAP-04 | P1: Veredito por estrato (teste e IC) | T3 | Implementing |
 | MAP-05 | P1: Veredito por estrato (família do Holm, rótulos) | Specify | Pending |
 | MAP-06 | P1: Veredito por estrato ("estrutura paga" e relatório) | Specify | Pending |
 | MAP-07 | P2: Sensibilidade (seeds, chart, margem) | Specify | Pending |

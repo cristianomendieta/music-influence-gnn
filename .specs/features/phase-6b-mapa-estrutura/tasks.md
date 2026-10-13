@@ -128,12 +128,12 @@ Sete tasks, uma única leva: execução inline, sem sub-agentes. O P3 (grau de c
 
 **Done when**:
 
-- [ ] A diferença média, o IC e o `p` coincidem com a chamada direta a `stats.paired_by_song` em dados sintéticos, e a margem é `equiv_frac × média por música de err_b`
-- [ ] Duas origens da mesma música em charts diferentes produzem uma única observação por música
-- [ ] Erros idênticos nas duas variantes devolvem `p = 1.0` e diferença 0, sem lançar exceção (o Wilcoxon do scipy falha com diferenças todas nulas)
-- [ ] A semente fixa torna o IC reprodutível: duas chamadas iguais devolvem o mesmo IC
-- [ ] Gate check passes: `$PY -m pytest tests/test_mapa.py -q`
-- [ ] Test count: ≥ 5 tests pass (no silent deletions)
+- [x] A diferença média, o IC e o `p` coincidem com a chamada direta a `stats.paired_by_song` em dados sintéticos, e a margem é `equiv_frac × média por música de err_b`
+- [x] Duas origens da mesma música em charts diferentes produzem uma única observação por música
+- [x] Erros idênticos nas duas variantes devolvem `p = 1.0` e diferença 0, sem lançar exceção (o Wilcoxon do scipy falha com diferenças todas nulas)
+- [x] A semente fixa torna o IC reprodutível: duas chamadas iguais devolvem o mesmo IC
+- [x] Gate check passes: `$PY -m pytest tests/test_mapa.py -q`
+- [x] Test count: 6 tests pass (≥ 5 planned; no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
