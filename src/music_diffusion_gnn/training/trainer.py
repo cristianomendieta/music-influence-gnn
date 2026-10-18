@@ -46,9 +46,17 @@ class Config:
     # Subsample cotrajectory edges per snapshot to this maximum.
     # Necessary when 664K edges exhaust autograd memory on CPU/WSL.
     max_cotraj_edges: int = 30_000
+    # Spatial encoder (ADR-0006): "sage" (default) or "gatv2". heads and
+    # attn_dropout only apply to "gatv2".
+    encoder: str = "sage"
+    heads: int = 4
+    attn_dropout: float = 0.0
 
     def __str__(self) -> str:
-        return f"W{self.W}_h{self.hidden}_l{self.layers}_lr{self.lr:.0e}"
+        base = f"W{self.W}_h{self.hidden}_l{self.layers}_lr{self.lr:.0e}"
+        if self.encoder == "sage":
+            return base
+        return f"{base}_{self.encoder}_h{self.heads}_ad{self.attn_dropout:g}"
 
 
 @dataclass
@@ -59,6 +67,77 @@ class TrainResult:
     val_mse: float
     n_params: int
     elapsed_sec: float
+
+
+# ---------------------------------------------------------------------------
+# Parameter budget and checkpoint (ADR-0006)
+# ---------------------------------------------------------------------------
+
+# Parameters of the SAGE proposal (W12_h128_l3), the budget the attention
+# encoder must stay within.
+PARAM_BUDGET_REF = 453_121
+
+
+def check_param_budget(n_params: int, ref: int = PARAM_BUDGET_REF, tol: float = 0.10) -> None:
+    """Raise ``ValueError`` if ``n_params`` is outside ``ref ± tol`` (ADR-0006).
+
+    The accepted range is ``[int(ref·(1−tol)), int(ref·(1+tol))]``, inclusive:
+    407,808 to 498,433 for the defaults.
+    """
+    lo, hi = int(ref * (1 - tol)), int(ref * (1 + tol))
+    if not lo <= n_params <= hi:
+        raise ValueError(
+            f"n_params={n_params} is outside the budget {ref} ± {tol:.0%} "
+            f"([{lo}, {hi}]): change the channels per head, not the heads"
+        )
+
+
+def checkpoint_dict(
+    config: Config,
+    result: TrainResult,
+    *,
+    variante: str,
+    split_regime: str,
+    graph_seed: int | None,
+    graph_version: str,
+) -> dict:
+    """Return the checkpoint record: what generated the model, plus its weights.
+
+    Same layout as the ladder checkpoints (item 06), extended with the encoder
+    settings and the graph version. ``model_from_checkpoint`` rebuilds the
+    model from these fields alone.
+    """
+    return {
+        "variante": variante, "split_regime": split_regime, "seed": config.seed,
+        "graph_seed": graph_seed, "graph_version": graph_version,
+        "config_str": str(config), "W": config.W, "hidden": config.hidden,
+        "layers": config.layers, "lr": config.lr, "dropout": config.dropout,
+        "max_cotraj_edges": config.max_cotraj_edges,
+        "encoder": config.encoder, "heads": config.heads, "attn_dropout": config.attn_dropout,
+        "n_params": result.n_params, "val_mse": result.val_mse,
+        "val_curve": result.val_curve, "train_curve": result.train_curve,
+        "state_dict": {k: v.cpu() for k, v in result.best_state_dict.items()},
+    }
+
+
+def model_from_checkpoint(ckpt: dict, metadata: tuple) -> MusicDiffusionGNN:
+    """Rebuild a ``MusicDiffusionGNN`` from a ``checkpoint_dict`` record.
+
+    The popularity bank comes from the checkpoint's own ``pop_bank`` buffer.
+    """
+    sd = ckpt["state_dict"]
+    model = MusicDiffusionGNN(
+        metadata,
+        hidden=ckpt["hidden"],
+        layers=ckpt["layers"],
+        dropout=ckpt["dropout"],
+        pop_bank=sd.get("pop_bank"),
+        encoder=ckpt["encoder"],
+        heads=ckpt["heads"],
+        attn_dropout=ckpt["attn_dropout"],
+    )
+    model.load_state_dict(sd)
+    return model
 
 
 # ---------------------------------------------------------------------------
@@ -164,6 +243,9 @@ def train_one(
         layers=config.layers,
         dropout=config.dropout,
         pop_bank=pop_bank,
+        encoder=config.encoder,
+        heads=config.heads,
+        attn_dropout=config.attn_dropout,
     ).to(device)
     optimizer = Adam(
         model.parameters(),

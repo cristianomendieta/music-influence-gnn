@@ -221,12 +221,12 @@ O P3 (ablação por tipo de aresta no `A`, ATT-07) **não entra**: depende do de
 
 **Done when**:
 
-- [ ] `Config.__str__` distingue encoders e cabeças (`..._gatv2_h4_ad0.2`), e para `sage` continua igual ao texto de hoje (`W12_h128_l3_lr5e-04`)
-- [ ] `check_param_budget` aceita `453_121 ± 10%` e lança erro com os dois números fora disso (limites 407.808 e 498.433 testados)
-- [ ] O dicionário de checkpoint inclui `encoder`, `heads`, `attn_dropout`, `variante`, `split_regime`, `seed`, `graph_seed` e `n_params`, e um modelo é reconstruído a partir só desses campos (AC4 de treino)
-- [ ] `train_one` roda 1 época num grafo e amostras sintéticas com `encoder="gatv2"` e devolve `n_params` e `val_mse` finitos
-- [ ] Gate check passes: `$PY -m pytest tests/test_phase7_train.py -q` e a regressão `$PY -m pytest tests -q -m "not slow"`
-- [ ] Test count: ≥ 5 new tests pass and the pre-existing suite count is unchanged (no silent deletions)
+- [x] `Config.__str__` distingue encoders e cabeças (`..._gatv2_h4_ad0.2`), e para `sage` continua igual ao texto de hoje (`W12_h128_l3_lr5e-04`)
+- [x] `check_param_budget` aceita `453_121 ± 10%` e lança erro com os dois números fora disso (limites 407.808 e 498.433 testados)
+- [x] O dicionário de checkpoint inclui `encoder`, `heads`, `attn_dropout`, `variante`, `split_regime`, `seed`, `graph_seed` e `n_params`, e um modelo é reconstruído a partir só desses campos (AC4 de treino)
+- [x] `train_one` roda 1 época num grafo e amostras sintéticas com `encoder="gatv2"` e devolve `n_params` e `val_mse` finitos
+- [x] Gate check passes: `$PY -m pytest tests/test_phase7_train.py -q` e a regressão `$PY -m pytest tests -q -m "not slow"`
+- [x] Test count: ≥ 5 new tests pass and the pre-existing suite count is unchanged (no silent deletions)
 
 **Tests**: unit
 **Gate**: build
