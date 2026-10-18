@@ -11,7 +11,7 @@ Implement these tasks with the `tlc-spec-driven` skill: **activate it by name an
 **Spec**: `.specs/features/phase-7-atencao/spec.md`
 **Pré-compromisso**: `docs/adr/0006-precompromisso-fase-atencao.md` (aceito; nenhuma decisão dele muda depois do primeiro treino)
 **Design**: nenhum arquivo separado. O desenho está no ADR-0006 (variante, controles, grade, família do Holm) e nas tasks (assinaturas).
-**Status**: Draft (2026-10-18). **Escrita, não implementada.** A implementação fica para a próxima sessão.
+**Status**: Implementada e validada em 2026-10-18 (T1 a T14, `validation.md` em PASS na 4.ª verificação). **Falta executar os notebooks no Colab com GPU** (15a a 15e); nenhum foi rodado.
 
 **Restrição do autor:** treino, ajuste e avaliação rodam em notebooks no Colab. Localmente só rodam testes unitários leves (tabelas pequenas, grafo sintético de dezenas de nós). Nenhuma task executa um notebook, treina um modelo ou carrega um grafo real aqui.
 

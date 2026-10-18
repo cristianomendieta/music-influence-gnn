@@ -1,0 +1,117 @@
+{
+  "schema": 1,
+  "promote_threshold": 2,
+  "window_days": 45,
+  "quarantine_threshold": 2,
+  "next_id": 7,
+  "lessons": [
+    {
+      "id": "L-001",
+      "key": "ac_gap::when a spec fixes a numeric budget for a configuration test the real configuration at production dimensions against that budget not only the guard function on literal values",
+      "text": "When a spec fixes a numeric budget for a configuration, test the real configuration at production dimensions against that budget, not only the guard function on literal values",
+      "signal": "ac_gap",
+      "scope": "models",
+      "status": "candidate",
+      "features": [
+        "phase-7-atencao"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "ATT-02 AC6 / ATT-03 AC1 (validation.md Gap 1, probe 561537 vs 453121±10%) (models)"
+      ],
+      "created": "2026-10-18T15:40:23Z",
+      "last_seen": "2026-10-18T15:40:23Z"
+    },
+    {
+      "id": "L-002",
+      "key": "surviving_mutant::when a function promises to normalise its input test it with unnormalised input",
+      "text": "When a function promises to normalise its input, test it with unnormalised input",
+      "signal": "surviving_mutant",
+      "scope": "evaluation",
+      "status": "candidate",
+      "features": [
+        "phase-7-atencao"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "L13 src/music_diffusion_gnn/evaluation/attention_stats.py:245 (evaluation)"
+      ],
+      "created": "2026-10-18T15:40:23Z",
+      "last_seen": "2026-10-18T15:40:23Z"
+    },
+    {
+      "id": "L-003",
+      "key": "spec_precision_gap::state in the ac exactly which object a count or budget refers to and which component enforces it",
+      "text": "State in the AC exactly which object a count or budget refers to and which component enforces it",
+      "signal": "spec_precision_gap",
+      "scope": "specs",
+      "status": "candidate",
+      "features": [
+        "phase-7-atencao"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "ATT-02 AC6 (encoder vs whole-model parameter count) (specs)"
+      ],
+      "created": "2026-10-18T15:40:23Z",
+      "last_seen": "2026-10-18T15:40:23Z"
+    },
+    {
+      "id": "L-004",
+      "key": "surviving_mutant::when a rule uses a strict inequality against a threshold test the value exactly at the threshold",
+      "text": "When a rule uses a strict inequality against a threshold, test the value exactly at the threshold",
+      "signal": "surviving_mutant",
+      "scope": "evaluation",
+      "status": "candidate",
+      "features": [
+        "phase-7-atencao"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "P2/P3 src/music_diffusion_gnn/evaluation/veredito_atencao.py:59,61 (evaluation)"
+      ],
+      "created": "2026-10-18T16:52:34Z",
+      "last_seen": "2026-10-18T16:52:34Z"
+    },
+    {
+      "id": "L-005",
+      "key": "surviving_mutant::when a report text carries a derived number the spec states assert that number not only the inputs it is derived from",
+      "text": "When a report text carries a derived number the spec states, assert that number, not only the inputs it is derived from",
+      "signal": "surviving_mutant",
+      "scope": "evaluation",
+      "status": "candidate",
+      "features": [
+        "phase-7-atencao"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "P1 src/music_diffusion_gnn/evaluation/veredito_atencao.py:181 (evaluation)"
+      ],
+      "created": "2026-10-18T16:52:40Z",
+      "last_seen": "2026-10-18T16:52:40Z"
+    },
+    {
+      "id": "L-006",
+      "key": "surviving_mutant::when a function reports a count of what was present test it on an input where something is missing so the count differs from the total",
+      "text": "When a function reports a count of what was present, test it on an input where something is missing, so the count differs from the total",
+      "signal": "surviving_mutant",
+      "scope": "evaluation",
+      "status": "candidate",
+      "features": [
+        "phase-7-atencao"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "N4 src/music_diffusion_gnn/evaluation/veredito_atencao.py:169 (evaluation)"
+      ],
+      "created": "2026-10-18T18:18:52Z",
+      "last_seen": "2026-10-18T18:18:52Z"
+    }
+  ]
+}
