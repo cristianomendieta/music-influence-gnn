@@ -132,13 +132,13 @@ O P3 (ablação por tipo de aresta no `A`, ATT-07) **não entra**: depende do de
 
 **Done when**:
 
-- [ ] A saída tem forma `(N_music, hidden)` num grafo sintético com os cinco tipos de aresta
-- [ ] IF uma relação não tem aresta no snapshot THEN o encoder não lança erro e o tipo de nó destino continua com embedding não nulo, vindo do termo raiz (AC7)
-- [ ] Perturbar as colunas brutas `days_together` e `avg_position_distance` do `edge_attr` do grafo devolve embeddings idênticos (AC3, nível encoder)
-- [ ] Paridade funcional (AC4): com todas as arestas removidas (`strip_all_edges`) e com `W_raiz,t` e `b_raiz,t` iguais à soma dos `lin_r` e dos vieses de `lin_l` das relações do `HeteroSpatialEncoder` que chegam ao tipo `t`, o embedding de música é igual ao do SAGE (tolerância `1e-6`)
-- [ ] `hidden` não divisível por `heads` lança `ValueError` na construção, com mensagem que diz os dois números
-- [ ] Gate check passes: `$PY -m pytest tests/test_phase7_encoder.py -q`
-- [ ] Test count: ≥ 6 tests pass (no silent deletions)
+- [x] A saída tem forma `(N_music, hidden)` num grafo sintético com os cinco tipos de aresta
+- [x] IF uma relação não tem aresta no snapshot THEN o encoder não lança erro e o tipo de nó destino continua com embedding não nulo, vindo do termo raiz (AC7)
+- [x] Perturbar as colunas brutas `days_together` e `avg_position_distance` do `edge_attr` do grafo devolve embeddings idênticos (AC3, nível encoder)
+- [x] Paridade funcional (AC4): com todas as arestas removidas (`strip_all_edges`) e com `W_raiz,t` e `b_raiz,t` iguais à soma dos `lin_r` e dos vieses de `lin_l` das relações do `HeteroSpatialEncoder` que chegam ao tipo `t`, o embedding de música é igual ao do SAGE (tolerância `1e-6`)
+- [x] `hidden` não divisível por `heads` lança `ValueError` na construção, com mensagem que diz os dois números
+- [x] Gate check passes: `$PY -m pytest tests/test_phase7_encoder.py -q`
+- [x] Test count: ≥ 6 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
