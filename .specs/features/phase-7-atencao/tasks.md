@@ -102,13 +102,13 @@ O P3 (ablação por tipo de aresta no `A`, ATT-07) **não entra**: depende do de
 
 **Done when**:
 
-- [ ] A saída tem exatamente duas colunas: `chart` (0/1, copiado da coluna 2) e `log1p(week − first_seen_week)`; os valores batem com uma tabela de 5 arestas calculada à mão
-- [ ] Perturbar as colunas 0 e 1 de `edge_attr` (`days_together`, `avg_position_distance`) para valores arbitrários não altera a saída (AC3 da spec, nível função)
-- [ ] IF alguma aresta tem `first_seen_week > week` THEN a função lança `ValueError` (snapshot sem `mask_until` é erro de uso, não silêncio)
-- [ ] Relações sem atributo causal (`performs`, `has_genre`, `rev_has_genre`, `cooccurs`) não aparecem no resultado
-- [ ] A idade nunca é negativa em arestas de um snapshot mascarado
-- [ ] Gate check passes: `$PY -m pytest tests/test_phase7_edge_features.py -q`
-- [ ] Test count: ≥ 5 tests pass (no silent deletions)
+- [x] A saída tem exatamente duas colunas: `chart` (0/1, copiado da coluna 2) e `log1p(week − first_seen_week)`; os valores batem com uma tabela de 5 arestas calculada à mão
+- [x] Perturbar as colunas 0 e 1 de `edge_attr` (`days_together`, `avg_position_distance`) para valores arbitrários não altera a saída (AC3 da spec, nível função)
+- [x] IF alguma aresta tem `first_seen_week > week` THEN a função lança `ValueError` (snapshot sem `mask_until` é erro de uso, não silêncio)
+- [x] Relações sem atributo causal (`performs`, `has_genre`, `rev_has_genre`, `cooccurs`) não aparecem no resultado
+- [x] A idade nunca é negativa em arestas de um snapshot mascarado
+- [x] Gate check passes: `$PY -m pytest tests/test_phase7_edge_features.py -q`
+- [x] Test count: ≥ 5 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
