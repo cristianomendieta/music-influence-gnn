@@ -191,13 +191,13 @@ O P3 (ablação por tipo de aresta no `A`, ATT-07) **não entra**: depende do de
 
 **Done when**:
 
-- [ ] Com `encoder="sage"` as chaves e as formas do `state_dict` são idênticas às de antes da mudança (teste contra uma lista de chaves fixada no teste) e a regressão existente passa
-- [ ] Com `encoder="gatv2"`, `encode_weeks` e `predict` rodam num grafo sintético e devolvem predições em `[0, 0,5]`
-- [ ] Perturbar `days_together` e `avg_position_distance` no grafo não altera as predições de ponta a ponta (AC3 inteiro)
-- [ ] Com `max_cotraj_edges` o atributo de aresta é subamostrado junto com as arestas (mesmo `perm`)
-- [ ] `encoder` desconhecido lança `ValueError` que lista os valores aceitos
-- [ ] Gate check passes: `$PY -m pytest tests/test_phase7_model.py -q` e a regressão `$PY -m pytest tests -q -m "not slow"`
-- [ ] Test count: ≥ 5 new tests pass and the pre-existing suite count is unchanged (no silent deletions)
+- [x] Com `encoder="sage"` as chaves e as formas do `state_dict` são idênticas às de antes da mudança (teste contra uma lista de chaves fixada no teste) e a regressão existente passa
+- [x] Com `encoder="gatv2"`, `encode_weeks` e `predict` rodam num grafo sintético e devolvem predições em `[0, 0,5]`
+- [x] Perturbar `days_together` e `avg_position_distance` no grafo não altera as predições de ponta a ponta (AC3 inteiro)
+- [x] Com `max_cotraj_edges` o atributo de aresta é subamostrado junto com as arestas (mesmo `perm`)
+- [x] `encoder` desconhecido lança `ValueError` que lista os valores aceitos
+- [x] Gate check passes: `$PY -m pytest tests/test_phase7_model.py -q` e a regressão `$PY -m pytest tests -q -m "not slow"`
+- [x] Test count: ≥ 5 new tests pass and the pre-existing suite count is unchanged (no silent deletions)
 
 **Tests**: unit
 **Gate**: full

@@ -8,7 +8,9 @@ import torch.nn as nn
 from torch import Tensor
 from torch_geometric.data import HeteroData
 
+from music_diffusion_gnn.graph.edge_features import causal_edge_features
 from music_diffusion_gnn.graph.temporal import mask_until
+from music_diffusion_gnn.models.attention_encoder import HeteroAttentionEncoder
 from music_diffusion_gnn.models.encoder import HeteroSpatialEncoder
 from music_diffusion_gnn.models.temporal_head import TemporalHead
 
@@ -17,6 +19,7 @@ if TYPE_CHECKING:
 
 
 _COTRAJ_ET = ("music", "cotrajectory", "music")
+_ENCODERS = ("sage", "gatv2")
 
 
 def _subsample_cotraj(snap: HeteroData, max_edges: int) -> HeteroData:
@@ -69,13 +72,26 @@ class MusicDiffusionGNN(nn.Module):
         layers: int = 3,
         dropout: float = 0.2,
         pop_bank: Tensor | None = None,
+        encoder: str = "sage",
+        heads: int = 4,
+        attn_dropout: float = 0.0,
     ) -> None:
         super().__init__()
+        if encoder not in _ENCODERS:
+            raise ValueError(f"encoder must be one of {_ENCODERS}, got {encoder!r}")
         self.hidden = hidden
+        self.encoder_name = encoder
         # Genre nodes carry structural attributes derived from the genre↔genre
         # network of the training years (ADR-0003). The 530×32 learned table
         # they replaced is gone: genre features now come from the graph itself.
-        self.encoder = HeteroSpatialEncoder(metadata, hidden=hidden, layers=layers, dropout=dropout)
+        if encoder == "sage":
+            self.encoder = HeteroSpatialEncoder(metadata, hidden=hidden, layers=layers, dropout=dropout)
+        else:
+            # Per-relation GATv2 with a root term (ADR-0006).
+            self.encoder = HeteroAttentionEncoder(
+                metadata, hidden=hidden, layers=layers, heads=heads,
+                dropout=dropout, attn_dropout=attn_dropout,
+            )
         self.head = TemporalHead(hidden=hidden, dropout=dropout)
         # Per-week popularity (n_weeks, N_music, 2); registered as a buffer so it
         # follows .to(device) but is not a trainable parameter. None → fallback.
@@ -126,7 +142,15 @@ class MusicDiffusionGNN(nn.Module):
                 x_dict["music"] = torch.cat(
                     [x_dict["music"], self.pop_bank[w].to(device)], dim=1
                 )
-            bank[w] = self.encoder(x_dict, edge_index_dict)
+            if self.encoder_name == "gatv2":
+                # Causal edge attributes only (ADR-0006). Built after the
+                # subsampling, so they follow the same perm as the edges.
+                edge_attr_dict = {
+                    k: v.to(device) for k, v in causal_edge_features(snap, w).items()
+                }
+                bank[w] = self.encoder(x_dict, edge_index_dict, edge_attr_dict)
+            else:
+                bank[w] = self.encoder(x_dict, edge_index_dict)
         return bank
 
     def predict(
