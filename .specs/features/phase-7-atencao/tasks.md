@@ -356,7 +356,7 @@ O P3 (ablação por tipo de aresta no `A`, ATT-07) **não entra**: depende do de
 
 ### T10: Notebook dos 12 treinos
 
-**What**: `notebooks/item15b_treinos_atencao_colab.ipynb` treina `A` e `A-emb` × 2 splits × 3 seeds com a configuração escolhida na T9, `max_cotraj_edges = 30_000`, 35 épocas, retomável por checkpoint, com o grafo embaralhado de `rewire_preserving_degree(g, seed=seed)`.
+**What**: `notebooks/item15b_treinos_atencao_colab.ipynb` treina `A` e `A-emb` × 2 splits × 3 seeds com a configuração escolhida na T9, `max_cotraj_edges = 30_000`, 100 épocas (`patience = 10`), retomável por checkpoint, com o grafo embaralhado de `rewire_preserving_degree(g, seed=seed)`.
 **Where**: `notebooks/item15b_treinos_atencao_colab.ipynb`
 **Depends on**: T9
 **Reuses**: `notebooks/item06_08_escada_treinos_colab.ipynb` (plano de treinos, retomada, tempo-limite da sessão), `graph/controls.py`

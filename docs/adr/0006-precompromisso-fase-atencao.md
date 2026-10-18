@@ -49,9 +49,14 @@ splits, a ancoragem na persistência e a prevenção de vazamento.
 | sem_grafo (existente) | 0 novos | isola capacidade; é equivalente ao `A` sem arestas |
 | Proposta SAGE (existente) | 0 novos | o encoder anterior |
 
-12 treinos novos, mais o ajuste. Mesma config temporal (`W12`), 35 épocas, `max_cotraj_edges = 30_000`
+12 treinos novos, mais o ajuste. Mesma config temporal (`W12`), 100 épocas com `patience = 10` (o `Config` da escada), `max_cotraj_edges = 30_000`
 no treino, e avaliação nas **duas** leituras de orçamento (a principal é o grafo completo, por
 comparabilidade com o item 10).
+
+> Emenda de 2026-10-18, antes de qualquer treino: a versão aceita dizia "35 épocas". A escada de
+> comparação treinou com os padrões do `Config` (`max_epochs = 100`, `patience = 10`); o 35 vinha de uma
+> parada antecipada do item 05, não de um orçamento fixado. Para comparar com a escada em igualdade de
+> condições, o orçamento é o dela: 100 épocas, `patience = 10`.
 
 ### Ajuste de hiperparâmetros (igual para todos)
 

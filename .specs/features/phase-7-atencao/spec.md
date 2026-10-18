@@ -84,7 +84,7 @@ A GNN com `HeteroGraphSAGE` não supera o baseline sem grafo nem o grafo embaral
 3. WHEN um treino é interrompido THEN the system SHALL retomar do checkpoint existente sem retreinar os que já terminaram.  <!-- event-driven -->
 4. The system SHALL gravar, por checkpoint, o regime de split, a seed, a variante (`A` ou `A-emb`), a configuração e a versão do grafo.  <!-- ubiquitous -->
 5. WHEN o Modo 2 roda THEN the system SHALL avaliar k ∈ {1, 2, 4}, nos dois charts, nos recortes completo e on-chart, nas duas leituras de orçamento de arestas.  <!-- event-driven -->
-6. WHILE o treino roda, the system SHALL fixar `max_cotraj_edges = 30_000` e o mesmo número de épocas (35) da escada.  <!-- state-driven -->
+6. WHILE o treino roda, the system SHALL fixar `max_cotraj_edges = 30_000` e o mesmo orçamento de épocas da escada (`max_epochs = 100`, `patience = 10`).  <!-- state-driven -->
 
 **Independent Test**: o notebook de treino lista 12 checkpoints e a tabela de `val_mse` por (variante, split, seed); o de avaliação reproduz o formato de `predicoes_cinco_modelos.parquet` com as variantes novas.
 
