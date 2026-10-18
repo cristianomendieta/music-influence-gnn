@@ -164,3 +164,63 @@ def test_hidden_not_divisible_by_heads_is_rejected():
         HeteroAttentionEncoder(_graph().metadata(), hidden=10, layers=1, heads=4)
     msg = str(exc.value)
     assert re.search(r"\b10\b", msg) and re.search(r"\b4\b", msg), msg
+
+
+# --- T3: attention weights and parameter count -----------------------------
+
+def test_attention_sums_to_one_per_destination_with_edges():
+    """AC5: per relation and layer, Σ alpha over in-edges = 1 for every head."""
+    g = _graph()
+    snap = mask_until(g, WEEK)
+    enc = _encoder(g)
+    with torch.no_grad():
+        _, attention = _encode(enc, g, return_attention=True)
+    assert len(attention) == 2
+    for layer in attention:
+        assert set(layer) == set(g.edge_types)
+        for et, (edge_index, alpha) in layer.items():
+            assert torch.equal(edge_index, snap[et].edge_index), et
+            assert alpha.shape == (edge_index.shape[1], HEADS), et
+            n_dst = g[et[2]].num_nodes
+            sums = torch.zeros(n_dst, HEADS).index_add_(0, edge_index[1], alpha)
+            has_edge = torch.bincount(edge_index[1], minlength=n_dst) > 0
+            assert has_edge.any(), et
+            torch.testing.assert_close(
+                sums[has_edge], torch.ones(int(has_edge.sum()), HEADS), atol=1e-5, rtol=0
+            )
+
+
+def test_parallel_edges_keep_one_weight_each():
+    """Edge case: the pair 0→1 in both charts is two entries, not one summed edge."""
+    g = _graph()
+    enc = _encoder(g)
+    with torch.no_grad():
+        _, attention = _encode(enc, g, return_attention=True)
+    edge_index, alpha = attention[0][COTRAJ]
+    pair = (edge_index[0] == 0) & (edge_index[1] == 1)
+    assert int(pair.sum()) == 2
+    a, b = alpha[pair]
+    # Same source and destination features in layer 0: only chart and age differ.
+    assert not torch.allclose(a, b)
+
+
+def test_default_path_is_unchanged_by_the_attention_flag():
+    g = _graph()
+    enc = _encoder(g)
+    with torch.no_grad():
+        z_default = _encode(enc, g)
+        z_att, _ = _encode(enc, g, return_attention=True)
+    assert isinstance(z_default, torch.Tensor)
+    assert torch.equal(z_default, z_att)
+
+
+def test_count_params_counts_only_initialised_parameters():
+    g = _graph()
+    enc = _encoder(g)
+    before = enc.count_params()  # must not touch the lazy (uninitialised) weights
+    with torch.no_grad():
+        _encode(enc, g)
+    after = enc.count_params()
+    assert isinstance(before, int) and isinstance(after, int)
+    assert 0 < before < after
+    assert after == sum(p.numel() for p in enc.parameters())

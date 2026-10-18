@@ -63,7 +63,8 @@ class HeteroAttentionEncoder(nn.Module):
         x_dict: dict[str, Tensor],
         edge_index_dict: dict,
         edge_attr_dict: dict | None = None,
-    ) -> Tensor:
+        return_attention: bool = False,
+    ) -> Tensor | tuple[Tensor, list[dict[tuple, tuple[Tensor, Tensor]]]]:
         """Run all layers and return music node embeddings.
 
         Args:
@@ -71,19 +72,32 @@ class HeteroAttentionEncoder(nn.Module):
             edge_index_dict: edge indices keyed by (src, rel, dst) tuple
             edge_attr_dict: causal edge features from ``causal_edge_features``;
                 read only for the relations in ``_EDGE_DIM``
+            return_attention: also return the attention weights
 
         Returns:
-            Z_music of shape (N_music, hidden)
+            Z_music of shape (N_music, hidden). With ``return_attention=True``,
+            ``(Z_music, attention)`` where ``attention[layer][edge_type]`` is
+            ``(edge_index, alpha)`` and ``alpha`` is ``(E, heads)``. Parallel
+            edges stay separate entries, each with its own weight.
         """
         edge_attr_dict = edge_attr_dict or {}
+        attention: list[dict[tuple, tuple[Tensor, Tensor]]] = []
         h = x_dict
         for i in range(self.layers):
             out = {t: root(h[t]) for t, root in self.roots[i].items()}
+            attention.append({})
             for et in self.edge_types:
                 src, _, dst = et
                 edge_index = edge_index_dict[et]
                 edge_attr = edge_attr_dict[et] if et in _EDGE_DIM else None
-                msg = self.convs[i][et]((h[src], h[dst]), edge_index, edge_attr=edge_attr)
+                conv = self.convs[i][et]
+                if return_attention:
+                    msg, attention[i][et] = conv(
+                        (h[src], h[dst]), edge_index, edge_attr=edge_attr,
+                        return_attention_weights=True,
+                    )
+                else:
+                    msg = conv((h[src], h[dst]), edge_index, edge_attr=edge_attr)
                 # An empty relation still runs (its lazy weights materialise) but
                 # contributes nothing, not even its bias (AC7).
                 if edge_index.shape[1] > 0:
@@ -91,4 +105,19 @@ class HeteroAttentionEncoder(nn.Module):
             h = {k: v.relu() for k, v in out.items()}
             if i < self.layers - 1:
                 h = {k: self.dropout(v) for k, v in h.items()}
+        if return_attention:
+            return h["music"], attention
         return h["music"]
+
+    def count_params(self) -> int:
+        """Return the number of trainable parameters already initialised.
+
+        The root ``Linear`` and the ``GATv2Conv`` projections are lazy; call
+        after at least one forward pass to get the full count.
+        """
+        from torch.nn.parameter import UninitializedParameter
+        return sum(
+            p.numel()
+            for p in self.parameters()
+            if p.requires_grad and not isinstance(p, UninitializedParameter)
+        )

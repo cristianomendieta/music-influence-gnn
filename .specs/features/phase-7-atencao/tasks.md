@@ -162,12 +162,12 @@ O P3 (ablação por tipo de aresta no `A`, ATT-07) **não entra**: depende do de
 
 **Done when**:
 
-- [ ] Por relação e camada, os pesos somam 1 sobre as arestas de entrada de cada nó de destino com ao menos uma aresta (AC5); cabeças somadas separadamente, tolerância `1e-5`
-- [ ] Arestas paralelas (um par nos dois charts) aparecem como duas entradas distintas, cada uma com seu peso (edge case da spec)
-- [ ] Com `return_attention=False` (o padrão) a saída é idêntica à da T2: o caminho padrão não muda
-- [ ] `count_params()` depois de um forward devolve um inteiro positivo; antes do forward não conta os parâmetros lazy
-- [ ] Gate check passes: `$PY -m pytest tests/test_phase7_encoder.py -q`
-- [ ] Test count: ≥ 10 tests pass in total (no silent deletions)
+- [x] Por relação e camada, os pesos somam 1 sobre as arestas de entrada de cada nó de destino com ao menos uma aresta (AC5); cabeças somadas separadamente, tolerância `1e-5`
+- [x] Arestas paralelas (um par nos dois charts) aparecem como duas entradas distintas, cada uma com seu peso (edge case da spec)
+- [x] Com `return_attention=False` (o padrão) a saída é idêntica à da T2: o caminho padrão não muda
+- [x] `count_params()` depois de um forward devolve um inteiro positivo; antes do forward não conta os parâmetros lazy
+- [x] Gate check passes: `$PY -m pytest tests/test_phase7_encoder.py -q`
+- [x] Test count: ≥ 10 tests pass in total (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
