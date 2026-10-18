@@ -310,11 +310,11 @@ O P3 (ablação por tipo de aresta no `A`, ATT-07) **não entra**: depende do de
 
 **Done when**:
 
-- [ ] Com 3 seeds iguais a concordância é 3 de 3 em todas as células; com uma seed invertida é 2 de 3
-- [ ] O resultado traz o desfecho O1 a O4 por seed isolada ao lado do desfecho da média
-- [ ] `budget_block` inclui o número de parâmetros do `A`, o da proposta SAGE (453.121) e "8 contra 24 configurações" (AC6)
-- [ ] Gate check passes: `$PY -m pytest tests/test_veredito_atencao.py -q`
-- [ ] Test count: ≥ 15 tests pass in total (no silent deletions)
+- [x] Com 3 seeds iguais a concordância é 3 de 3 em todas as células; com uma seed invertida é 2 de 3
+- [x] O resultado traz o desfecho O1 a O4 por seed isolada ao lado do desfecho da média
+- [x] `budget_block` inclui o número de parâmetros do `A`, o da proposta SAGE (453.121) e "8 contra 24 configurações" (AC6)
+- [x] Gate check passes: `$PY -m pytest tests/test_veredito_atencao.py -q`
+- [x] Test count: ≥ 15 tests pass in total (no silent deletions)
 
 **Tests**: unit
 **Gate**: build

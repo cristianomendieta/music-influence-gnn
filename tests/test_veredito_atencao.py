@@ -13,9 +13,15 @@ from music_diffusion_gnn.evaluation.stats import holm_correction, paired_by_song
 from music_diffusion_gnn.evaluation.veredito_atencao import (
     CONTRASTS,
     MAJORITY,
+    N_CONFIGS_ATTENTION,
+    N_CONFIGS_SAGE,
+    SAGE_N_PARAMS,
+    TIE_VAL_MSE,
     TREATED,
+    budget_block,
     classify_outcome,
     compare_models,
+    sensitivity_by_seed,
     verdict,
 )
 
@@ -207,3 +213,59 @@ def test_disagreeing_splits_flag_discordance_and_restrict_the_main_claim():
     assert out.discordancia.all()
     assert (out.afirmacao_principal == "restrita ao que se replica").all()
     assert "replica" in out.loc["current", "nota"]
+
+
+# ------------------------------------------------------------ T8: per-seed sensitivity, budget
+
+INVERTED = {"atencao": 0.2, "sem_grafo": 0.005, "atencao_emb": 0.005, "proposta": 0.005}
+
+
+def _seeds(per_seed_noise):
+    """One prediction table per seed (same origins), stacked with a ``seed`` column."""
+    return pd.concat([_preds(noise, n_songs=30, origins=1, seed=0).assign(seed=s)
+                      for s, noise in per_seed_noise.items()], ignore_index=True)
+
+
+def test_three_equal_seeds_agree_three_of_three_in_every_cell():
+    preds = _seeds({42: None, 43: None, 44: None})
+    main = compare_models(preds[preds.seed == 42].drop(columns="seed"), B=B, seed=1)
+    cells, outcomes = sensitivity_by_seed(preds, main, B=B, seed=1)
+    assert len(cells) == 36
+    assert (cells.seeds_concordam == 3).all()
+    assert (cells.n_seeds == 3).all()
+    assert (cells.rotulo_seed42 == cells.rotulo).all()
+    assert (outcomes.seeds_concordam == 3).all()
+
+
+def test_one_inverted_seed_agrees_two_of_three():
+    preds = _seeds({42: None, 43: None, 44: INVERTED})
+    main = compare_models(_preds(n_songs=30, origins=1, seed=0), B=B, seed=1)
+    assert (main.rotulo == "vence").all()
+    cells, _ = sensitivity_by_seed(preds, main, B=B, seed=1)
+    assert (cells.seeds_concordam == 2).all()
+    assert (cells.rotulo_seed44 == "perde").all()
+
+
+def test_outcome_of_each_isolated_seed_next_to_the_outcome_of_the_mean():
+    preds = _seeds({42: None, 43: None, 44: INVERTED})
+    main = compare_models(_preds(n_songs=30, origins=1, seed=0), B=B, seed=1)
+    _, outcomes = sensitivity_by_seed(preds, main, B=B, seed=1)
+    out = outcomes.set_index("split_regime")
+    assert out.loc["current", "desfecho_media"] == "O1"
+    assert out.loc["current", "desfecho_seed42"] == "O1"
+    assert out.loc["current", "desfecho_seed43"] == "O1"
+    assert out.loc["current", "desfecho_seed44"] == "O4"
+    assert out.loc["current", "seeds_concordam"] == 2
+    assert set(out.index) == {"current", "pre_pandemia"}
+
+
+def test_tuning_budget_constants_are_the_adr_ones():
+    assert (N_CONFIGS_ATTENTION, N_CONFIGS_SAGE, SAGE_N_PARAMS) == (8, 24, 453_121)
+    assert TIE_VAL_MSE == 0.000003   # tie rule of the tuning (spec, edge cases)
+
+
+def test_budget_block_states_both_param_counts_and_the_tuning_budget():
+    text = budget_block(431_250)
+    assert "431.250" in text
+    assert "453.121" in text
+    assert "8 contra 24 configurações" in text

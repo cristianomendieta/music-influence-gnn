@@ -35,6 +35,16 @@ OUTCOMES = {
 DISCORDANCE_NOTE = ("os splits discordam: a discordância é o resultado e a afirmação principal "
                     "fica restrita ao que se replica")
 
+# Tuning budget (ADR-0006, "Ajuste de hiperparâmetros"): a declared limitation.
+N_CONFIGS_ATTENTION = 8
+N_CONFIGS_SAGE = 24
+# Parameters of the SAGE proposal (W12_h128_l3). Same value as
+# training.trainer.PARAM_BUDGET_REF, repeated so this module needs no torch.
+SAGE_N_PARAMS = 453_121
+# Tuning tie: val_mse differences up to this count as a tie and the config with
+# fewer parameters wins (spec edge case; one between-seed std of item 06).
+TIE_VAL_MSE = 0.000003
+
 _KEYS = ["song_id", "chart", "origin_week", "k", "split_regime"]
 
 
@@ -125,3 +135,54 @@ def classify_outcome(table: pd.DataFrame) -> pd.DataFrame:
     out["afirmacao_principal"] = "restrita ao que se replica" if discord else out["desfecho"]
     out["nota"] = DISCORDANCE_NOTE if discord else ""
     return out
+
+
+_CELL = ["split_regime", "chart", "k", "hipotese", "contraste"]
+
+
+def sensitivity_by_seed(
+    preds_seeds: pd.DataFrame, main_table: pd.DataFrame, **compare_kwargs
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Repeat H1 to H3 on every isolated seed and compare with the test on the seed mean.
+
+    ``preds_seeds`` is the format of :func:`compare_models` plus a ``seed`` column
+    (one run per seed, not the average). ``main_table`` is the
+    :func:`compare_models` table on the seed mean. Returns ``(cells, outcomes)``:
+    ``cells`` has the main label of each cell, the label of every seed
+    (``rotulo_seed{s}``), how many seeds agree (``seeds_concordam``) and how many
+    had the cell (``n_seeds``); ``outcomes`` has, per split, the outcome of the
+    mean (``desfecho_media``) next to each seed's (``desfecho_seed{s}``) and how
+    many seeds agree with it.
+    """
+    cells = main_table[[*_CELL, "rotulo"]].copy()
+    outcomes = classify_outcome(main_table)[["split_regime", "desfecho"]].rename(
+        columns={"desfecho": "desfecho_media"})
+    for s, grp in preds_seeds.groupby("seed", sort=True):
+        t = compare_models(grp.drop(columns="seed"), **compare_kwargs)
+        cells = cells.merge(t[[*_CELL, "rotulo"]].rename(columns={"rotulo": f"rotulo_seed{s}"}),
+                            on=_CELL, how="left")
+        o = classify_outcome(t)[["split_regime", "desfecho"]]
+        outcomes = outcomes.merge(o.rename(columns={"desfecho": f"desfecho_seed{s}"}),
+                                  on="split_regime", how="left")
+    label_cols = [c for c in cells.columns if c.startswith("rotulo_seed")]
+    cells["seeds_concordam"] = cells[label_cols].eq(cells["rotulo"], axis=0).sum(axis=1)
+    cells["n_seeds"] = cells[label_cols].notna().sum(axis=1)
+    out_cols = [c for c in outcomes.columns if c.startswith("desfecho_seed")]
+    outcomes["seeds_concordam"] = outcomes[out_cols].eq(outcomes["desfecho_media"], axis=0).sum(axis=1)
+    return cells, outcomes
+
+
+def _pt_int(n: int) -> str:
+    return f"{n:,}".replace(",", ".")
+
+
+def budget_block(n_params_attention: int, *, n_params_sage: int = SAGE_N_PARAMS) -> str:
+    """The parameter and tuning budget text that goes next to the results table (AC6)."""
+    diff = (n_params_attention - n_params_sage) / n_params_sage
+    return (
+        f"Parâmetros: A = {_pt_int(n_params_attention)}; proposta SAGE = "
+        f"{_pt_int(n_params_sage)} ({diff:+.1%}).\n"
+        f"Orçamento de ajuste: {N_CONFIGS_ATTENTION} contra {N_CONFIGS_SAGE} configurações "
+        f"(a proposta SAGE teve {N_CONFIGS_SAGE}, a atenção {N_CONFIGS_ATTENTION}): "
+        "limitação declarada, não vantagem escondida."
+    )
