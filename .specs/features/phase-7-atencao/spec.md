@@ -141,7 +141,7 @@ A GNN com `HeteroGraphSAGE` não supera o baseline sem grafo nem o grafo embaral
 
 ## Edge Cases
 
-- IF o ajuste devolve duas configurações com `val_mse` empatado dentro da dispersão da seed THEN the system SHALL escolher a de menor número de parâmetros e registrar o empate.
+- IF o ajuste devolve duas configurações com `val_mse` empatado dentro da dispersão da seed THEN the system SHALL escolher a de menor número de parâmetros e registrar o empate. Se as contagens de parâmetros também forem iguais (caso da grade com `hidden = 112`, em que `heads`, `attn_dropout` e `lr` não mudam a contagem), vence a de menor `val_mse`, e o notebook registra que o desempate por parâmetros não decidiu.
 - IF a atenção não converge (perda NaN) numa seed THEN the system SHALL registrar a falha, repetir com a mesma configuração e outra inicialização uma vez, e reportar as duas tentativas.
 - WHEN o grafo tem arestas paralelas (par nos dois charts) THEN the system SHALL tratar cada uma como aresta própria, com seu `chart`, e não somá-las antes da atenção.
 - IF a memória da GPU não comporta a avaliação com 664.577 arestas THEN the system SHALL avaliar em lotes de semanas e registrar a mudança, sem alterar o orçamento de arestas.
