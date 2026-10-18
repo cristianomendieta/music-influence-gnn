@@ -41,6 +41,17 @@ def test_entropy_matches_hand_value_for_a_skewed_distribution():
     assert h[0] == pytest.approx(1.5 * np.log(2) / np.log(3))
 
 
+def test_entropy_does_not_depend_on_the_scale_of_the_weights():
+    # Docstring promise: weights are renormalised per destination. Node 0 gets
+    # [.5, .25, .25] x 3 (sums to 3), node 1 gets [1, 1] x 0.2 (sums to 0.4).
+    edge_index = np.array([[2, 3, 4, 2, 3], [0, 0, 0, 1, 1]])
+    normalised = np.array([0.5, 0.25, 0.25, 0.5, 0.5])
+    scaled = normalised * np.array([3.0, 3.0, 3.0, 0.4, 0.4])
+    h = normalized_attention_entropy(edge_index, scaled, n_dst=2)
+    assert h == pytest.approx(normalized_attention_entropy(edge_index, normalised, n_dst=2))
+    assert h == pytest.approx([1.5 * np.log(2) / np.log(3), 1.0])
+
+
 def test_in_degree_one_is_zero_by_convention_and_in_degree_zero_is_nan():
     # node 0 has one incoming edge (degree 1), node 1 has none, node 2 has two
     edge_index = np.array([[1, 0, 1], [0, 2, 2]])
