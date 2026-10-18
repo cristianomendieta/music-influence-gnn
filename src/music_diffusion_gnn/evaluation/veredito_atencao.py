@@ -1,0 +1,83 @@
+"""Verdict of the attention phase, as pre-committed in ADR-0006 (Phase 7, ATT-05).
+
+Pure functions over per-origin predictions (pandas/numpy, no torch); the heavy
+run happens in the Colab notebook. Every value fixed by
+``docs/adr/0006-precompromisso-fase-atencao.md`` lives here as a constant so the
+notebooks import it instead of retyping it.
+"""
+from __future__ import annotations
+
+import pandas as pd
+
+from music_diffusion_gnn.evaluation.mapa import ALPHA
+from music_diffusion_gnn.evaluation.stats import holm_correction, paired_by_song
+
+# The variant under test (``A``) and its three references, one per hypothesis.
+TREATED = "atencao"
+CONTRASTS = {
+    "H1": "sem_grafo",     # A beats the no-graph model (decides)
+    "H2": "atencao_emb",   # A beats attention on the rewired graph (decides)
+    "H3": "proposta",      # A beats the SAGE proposal (informative, does not decide)
+}
+CHARTS = ("viral50", "top200")
+KS = (1, 2, 4)
+N_CELLS = len(CHARTS) * len(KS)              # 6 cells per split
+FAMILY_SIZE = N_CELLS * len(CONTRASTS)       # 18 comparisons per split, one Holm family
+
+_KEYS = ["song_id", "chart", "origin_week", "k", "split_regime"]
+
+
+def verdict(ci_lo: float, ci_hi: float, p_holm: float) -> str:
+    """``vence``, ``perde`` or ``inconclusivo`` for one comparison of ``A`` against a reference.
+
+    Same win/loss rule as :func:`music_diffusion_gnn.evaluation.mapa.label_cell`:
+    ``vence`` is the whole bootstrap CI of the squared-error difference below zero
+    **and** Holm ``p`` below 0.05; ``perde`` is the mirror. ADR-0006 has no
+    equivalence margin, so everything else is ``inconclusivo``.
+    """
+    if ci_hi < 0 and p_holm < ALPHA:
+        return "vence"
+    if ci_lo > 0 and p_holm < ALPHA:
+        return "perde"
+    return "inconclusivo"
+
+
+def compare_models(preds: pd.DataFrame, *, B: int = 10_000, seed: int = 42) -> pd.DataFrame:
+    """H1, H2 and H3 per split and per on-chart cell (chart × k), Holm over the 18 of each split.
+
+    ``preds`` is long, one row per ``(modelo, origin)`` with ``y_true``, ``y_pred`` and
+    ``onchart`` (the format of ``predicoes_cinco_modelos.parquet`` plus the attention
+    models, seeds already averaged). Only on-chart rows enter. Each comparison is
+    :func:`paired_by_song` on the squared errors of the origins both models share,
+    so origins of the same song are averaged first and ``n_songs`` counts songs.
+    ``mean_diff < 0`` means ``A`` is better.
+
+    Raises ``ValueError`` if a model is missing from a split, or a split does not
+    yield the 18 comparisons the ADR fixes.
+    """
+    models = [TREATED, *CONTRASTS.values()]
+    d = preds[preds["onchart"] & preds["modelo"].isin(models)].copy()
+    for split in sorted(preds["split_regime"].unique()):
+        present = set(d.loc[d["split_regime"] == split, "modelo"])
+        missing = [m for m in models if m not in present]
+        if missing:
+            raise ValueError(f"model(s) missing from the on-chart predictions of {split!r}: {missing}")
+    d["err"] = (d["y_true"] - d["y_pred"]) ** 2
+    wide = d.pivot_table(index=_KEYS, columns="modelo", values="err").reset_index()
+
+    rows = []
+    for (split, chart, k), grp in wide.groupby(["split_regime", "chart", "k"], observed=True):
+        for hyp, control in CONTRASTS.items():
+            pair = grp[["song_id", TREATED, control]].dropna()
+            r = paired_by_song(pair[TREATED].to_numpy(), pair[control].to_numpy(),
+                               pair["song_id"].to_numpy(), B=B, seed=seed)
+            rows.append({"split_regime": split, "chart": chart, "k": k, "hipotese": hyp,
+                         "contraste": control, "n_origens": len(pair), **r})
+    table = pd.DataFrame(rows)
+
+    for split, grp in table.groupby("split_regime"):
+        if len(grp) != FAMILY_SIZE:
+            raise ValueError(f"{split!r} has {len(grp)} comparisons, ADR-0006 fixes {FAMILY_SIZE}")
+        table.loc[grp.index, "p_holm"] = holm_correction(grp["p_value"].to_numpy())
+    table["rotulo"] = [verdict(r.ci_lo, r.ci_hi, r.p_holm) for r in table.itertuples()]
+    return table

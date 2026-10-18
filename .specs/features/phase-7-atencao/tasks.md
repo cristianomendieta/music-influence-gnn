@@ -250,13 +250,13 @@ O P3 (ablação por tipo de aresta no `A`, ATT-07) **não entra**: depende do de
 
 **Done when**:
 
-- [ ] A tabela tem 6 células × 3 contrastes = 18 linhas por split, e o `p_holm` de cada split é `holm_correction` aplicada às 18 `p_value` juntas
-- [ ] "Vence" é IC inteiro abaixo de zero **e** `p_holm < 0,05`; "perde" é o espelho; só on-chart entra
-- [ ] A diferença de cada linha coincide com `paired_by_song` chamada diretamente (mesma semente)
-- [ ] Dentro de uma célula (chart × k) as origens da mesma música são promediadas antes do teste, e `n_songs` conta músicas, não origens
-- [ ] Um modelo ausente nas predições lança `ValueError` que nomeia o modelo
-- [ ] Gate check passes: `$PY -m pytest tests/test_veredito_atencao.py -q`
-- [ ] Test count: ≥ 6 tests pass (no silent deletions)
+- [x] A tabela tem 6 células × 3 contrastes = 18 linhas por split, e o `p_holm` de cada split é `holm_correction` aplicada às 18 `p_value` juntas
+- [x] "Vence" é IC inteiro abaixo de zero **e** `p_holm < 0,05`; "perde" é o espelho; só on-chart entra
+- [x] A diferença de cada linha coincide com `paired_by_song` chamada diretamente (mesma semente)
+- [x] Dentro de uma célula (chart × k) as origens da mesma música são promediadas antes do teste, e `n_songs` conta músicas, não origens
+- [x] Um modelo ausente nas predições lança `ValueError` que nomeia o modelo
+- [x] Gate check passes: `$PY -m pytest tests/test_veredito_atencao.py -q`
+- [x] Test count: ≥ 6 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
