@@ -98,6 +98,13 @@ def test_config_string_tells_encoders_and_heads_apart():
     assert len({gat(2, 0.0), gat(4, 0.0), gat(2, 0.2), gat(4, 0.2)}) == 4
 
 
+def test_config_defaults_are_the_ladder_training_budget():
+    # ATT-04 AC6 / ADR-0006 amendment: 100 epochs with patience 10, as the ladder.
+    cfg = Config(W=12, hidden=112, layers=3, lr=5e-4, encoder="gatv2", heads=4)
+    assert (cfg.max_epochs, cfg.patience) == (100, 10)
+    assert cfg.max_cotraj_edges == 30_000
+
+
 # --- parameter budget (AC6) ---------------------------------------------------
 
 @pytest.mark.parametrize("n", [453_121, 407_808, 498_433])
