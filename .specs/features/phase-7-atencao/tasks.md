@@ -429,13 +429,13 @@ O P3 (ablação por tipo de aresta no `A`, ATT-07) **não entra**: depende do de
 
 **Done when**:
 
-- [ ] A primeira célula de texto reproduz a tabela O1 a O4 e a regra de maioria do ADR-0006 **antes** de qualquer célula que leia resultado
-- [ ] O desfecho sai por split, com a discordância destacada quando existir, e cada seed isolada aparece na tabela de sensibilidade
-- [ ] O relatório traz parâmetros do `A` contra 453.121 e "8 contra 24 configurações" como limitação
-- [ ] O notebook não recalcula nada que o ADR fixou (limiares, família, contrastes são importados do módulo, não digitados)
-- [ ] O notebook escreve `results/atencao/veredito.parquet` e `relatorio.md` e não tem saída gravada
-- [ ] Gate check passes: `$PY scripts/check_notebook.py notebooks/item15d_veredito_atencao_colab.ipynb --forbid`
-- [ ] Test count: all unit tests of T1 to T8 still pass (no silent deletions)
+- [x] A primeira célula de texto reproduz a tabela O1 a O4 e a regra de maioria do ADR-0006 **antes** de qualquer célula que leia resultado
+- [x] O desfecho sai por split, com a discordância destacada quando existir, e cada seed isolada aparece na tabela de sensibilidade
+- [x] O relatório traz parâmetros do `A` contra 453.121 e "8 contra 24 configurações" como limitação
+- [x] O notebook não recalcula nada que o ADR fixou (limiares, família, contrastes são importados do módulo, não digitados)
+- [x] O notebook escreve `results/atencao/veredito.parquet` e `relatorio.md` e não tem saída gravada
+- [x] Gate check passes: `$PY scripts/check_notebook.py notebooks/item15d_veredito_atencao_colab.ipynb --forbid`
+- [x] Test count: all unit tests of T1 to T8 still pass (no silent deletions)
 
 **Tests**: none
 **Gate**: build
