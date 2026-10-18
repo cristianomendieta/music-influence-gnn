@@ -25,8 +25,10 @@ regra de decisão fixados aqui.
 splits, a ancoragem na persistência e a prevenção de vazamento.
 
 - Cada nó de tipo `t` recebe `ReLU(W_raiz,t · x + Σ_r GATv2_r(x_origem, x_destino))`. O termo
-  `W_raiz` reproduz o ramo raiz do `SAGEConv`, de modo que **sem arestas o modelo vira o mesmo MLP
-  do sem_grafo**. É por isso que o sem_grafo existente serve de referência e não se retreina.
+  `W_raiz` reproduz o ramo raiz do `SAGEConv`, de modo que **sem arestas o modelo pertence à mesma classe funcional
+  do sem_grafo** (uma soma de lineares é um linear: o `HeteroConv` do SAGE soma um ramo raiz por relação
+  que chega ao tipo, e `W_raiz` é essa soma). É por isso que o sem_grafo existente serve de referência e não se
+  retreina. A paridade é de classe funcional, não de dinâmica de treino: a parametrização difere.
 - `add_self_loops=False` (as relações com tipos diferentes são bipartidas; o ramo raiz faz o papel
   do laço).
 - Atributos de aresta **causais** apenas: `chart` de origem da aresta e `idade = w − first_seen_week`
@@ -79,8 +81,10 @@ bootstrap 95% da diferença de erro quadrático por música inteiro abaixo de ze
 |---|---|---|
 | **O1** | H1 e H2 em maioria | O nulo era do encoder. Com atenção a topologia paga, e a conclusão da dissertação reverte para o caso 1 (sob este encoder), com o SAGE como limitação |
 | **O2** | H1 em maioria, H2 não | O ganho vem de agregar atributos dos vizinhos, não da topologia (caso 2 do ADR-0001) |
-| **O3** | H1 não está em maioria, `A` não perde em maioria | O nulo é robusto à arquitetura. A conclusão do ADR-0001 sai fortalecida, e isso é resultado, não fracasso |
+| **O3** | H1 não está em maioria, `A` não perde em maioria (inclui H2 sem H1) | O nulo é robusto à arquitetura. A conclusão do ADR-0001 sai fortalecida, e isso é resultado, não fracasso. Se H2 valer sem H1, a nota é que o embaralhado prejudica e o grafo real fica neutro em relação a não ter grafo |
 | **O4** | `A` perde para o sem_grafo em maioria | A atenção prejudica (sobreajuste da vizinhança). Reportado como está, com o orçamento de ajuste como limitação |
+
+Precedência: O4 vale antes dos demais. Os quatro desfechos cobrem todas as combinações de H1, H2 e "perde" (a tabela original deixava H2 sem H1 de fora; fechado em 2026-10-18, antes de qualquer treino).
 
 Se os dois splits discordarem, a discordância é o resultado (como no ADR-0005), e a afirmação
 principal fica restrita ao que se replica.

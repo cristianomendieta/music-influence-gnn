@@ -256,7 +256,7 @@
 - [x] **Item 09** — Modo 2 e ablação refeitos sobre os checkpoints novos, `cooccurs` incluído.
 - [x] **Item 10** — comparação consolidada e veredito do ADR-0001: caso 3, nos dois splits.
 - [~] **Phase 6b** — mapa de onde a estrutura paga (`.specs/features/phase-6b-mapa-estrutura/`). Código, 57 testes e notebook `item22_mapa_estrutura_colab.ipynb` prontos em 2026-10-13 (`validation.md`, autoverificação). **Falta:** empurrar o repo, rodar o notebook no Colab, copiar `relatorio.md` para `docs/mapa-onde-a-estrutura-paga.md`. O P3 (grau de cotrajetória, MAP-08) fica para depois.
-- [ ] **Phase 7** — atenção (`.specs/features/phase-7-atencao/` + ADR-0006). Spec aprovada e ADR-0006 aceito em 2026-10-13; implementação em notebooks Colab.
+- [~] **Phase 7** — atenção (`.specs/features/phase-7-atencao/` + ADR-0006). Spec aprovada e ADR-0006 aceito em 2026-10-13; `tasks.md` escrito em 2026-10-18 (14 tasks, 4 fases). **Implementação na próxima sessão.** Abrir a sessão decidindo onde rodar os testes do encoder (torch CPU no scratchpad ou Colab); sugerir 3 levas de sub-agentes (Phase 1; Phases 2+3; Phase 4).
 
 ## Consolidação documental e novo marco (2026-08-18)
 

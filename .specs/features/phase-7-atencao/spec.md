@@ -37,9 +37,10 @@ A GNN com `HeteroGraphSAGE` não supera o baseline sem grafo nem o grafo embaral
 | Atributos de aresta | `chart` de origem e `log1p(w − first_seen_week)` apenas | As colunas brutas vazam o futuro. Estas duas são calculáveis no snapshot de `w` | y |
 | Relações sem `edge_attr` causal (`performs`, `has_genre`, `rev_has_genre`, `cooccurs`) | Atenção só por conteúdo (`edge_dim=None`) | `cooccurs` tem `weight` vindo da rede de gêneros (`graph/edges.py:301`); a restrição causal dele não foi auditada, então não entra | y |
 | Grade de ajuste | 8 configs: heads {2,4} × dropout de atenção {0, 0,2} × lr {5e-4, 1e-3}, `hidden=128`, seleção por `val_mse` em `current`/seed 42 | Fixa antes do teste. Menor que as 24 da proposta, e isso é limitação declarada | y |
+| Empate no ajuste | Diferença de `val_mse` ≤ 0,000003 conta como empate e vence a configuração com menos parâmetros | O desvio entre seeds da proposta SAGE no item 06 foi de 0,000002 a 0,000004; o limiar fica fixado antes de ver a grade | y |
 | Orçamento de parâmetros | Dentro de ±10% dos 453.121 do SAGE; o número exato é declarado | Comparabilidade; fora disso muda-se o canal por cabeça, não os `heads` | y |
 | Controle de topologia | `A-emb` reutiliza `rewire_preserving_degree` e fica com `edge_attr` alinhado à aresta original | Preserva a marginal dos atributos e destrói só o par; `idade` e `chart` continuam coerentes com `first_seen_week` | y |
-| Referência sem grafo | O sem_grafo SAGE existente | Equivalente ao `A` sem arestas se o termo raiz copia o ramo raiz do SAGE; testado | y |
+| Referência sem grafo | O sem_grafo SAGE existente | Mesma classe funcional do `A` sem arestas. O teste mapeia os pesos: `W_raiz,t = Σ_r lin_r` das relações que chegam ao tipo `t`, `b_raiz,t = Σ_r b_lin_l`. Paridade de função, não de otimização | y |
 | Orçamento de arestas na avaliação | Duas leituras: grafo completo (principal) e `teto_treino` | Mesma regra do ticket 08 | y |
 | Onde roda | Encoder e testes leves em `src/`; ajuste, treinos e avaliação em notebooks Colab (GPU) | Pedido do autor: nada pesado na máquina local, que não tem torch utilizável | y |
 | Prazo | Matriz até 2026-11-27 | Deixa dezembro e janeiro para redação; se não fechar, reporta parcial | y |
@@ -159,7 +160,7 @@ A GNN com `HeteroGraphSAGE` não supera o baseline sem grafo nem o grafo embaral
 | ATT-06 | P2: Pesos de atenção | Specify | Pending |
 | ATT-07 | P3: Ablação no `A` | Specify | Pending |
 
-**Coverage:** 7 total, 0 mapped to tasks, 7 unmapped ⚠️
+**Coverage:** 7 total, 6 mapped to tasks (ATT-07 não entra: depende do desfecho), 1 aguardando desfecho
 
 ---
 
