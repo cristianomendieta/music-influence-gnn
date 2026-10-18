@@ -369,13 +369,13 @@ O P3 (ablação por tipo de aresta no `A`, ATT-07) **não entra**: depende do de
 
 **Done when**:
 
-- [ ] O notebook aborta com mensagem clara se `config_escolhida.json` não existir ou se a configuração mudar depois de criada (hash gravado no JSON)
-- [ ] O plano lista exatamente 12 treinos (`A`, `A-emb` × `current`, `pre_pandemia` × 42, 43, 44) e cada checkpoint grava regime, seed, variante, configuração, versão do grafo e `graph_seed` do embaralhado
-- [ ] O orçamento de parâmetros é impresso e `check_param_budget` roda em cada treino; o notebook compara com a proposta SAGE (453.121) numa célula
-- [ ] IF a perda vira NaN numa seed THEN o notebook registra a falha, repete uma vez com outra inicialização e grava as duas tentativas (edge case da spec)
-- [ ] O notebook não tem saída gravada e compila
-- [ ] Gate check passes: `$PY scripts/check_notebook.py notebooks/item15b_treinos_atencao_colab.ipynb --forbid`
-- [ ] Test count: all unit tests of T1 to T8 still pass (no silent deletions)
+- [x] O notebook aborta com mensagem clara se `config_escolhida.json` não existir ou se a configuração mudar depois de criada (hash gravado no JSON)
+- [x] O plano lista exatamente 12 treinos (`A`, `A-emb` × `current`, `pre_pandemia` × 42, 43, 44) e cada checkpoint grava regime, seed, variante, configuração, versão do grafo e `graph_seed` do embaralhado
+- [x] O orçamento de parâmetros é impresso e `check_param_budget` roda em cada treino; o notebook compara com a proposta SAGE (453.121) numa célula
+- [x] IF a perda vira NaN numa seed THEN o notebook registra a falha, repete uma vez com outra inicialização e grava as duas tentativas (edge case da spec)
+- [x] O notebook não tem saída gravada e compila
+- [x] Gate check passes: `$PY scripts/check_notebook.py notebooks/item15b_treinos_atencao_colab.ipynb --forbid`
+- [x] Test count: all unit tests of T1 to T8 still pass (no silent deletions)
 
 **Tests**: none
 **Gate**: build
