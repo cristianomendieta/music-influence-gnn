@@ -280,13 +280,13 @@ O P3 (ablação por tipo de aresta no `A`, ATT-07) **não entra**: depende do de
 
 **Done when**:
 
-- [ ] Quatro tabelas sintéticas produzem exatamente O1, O2, O3 e O4 (uma por desfecho), e 3 de 6 vitórias **não** conta como maioria enquanto 4 de 6 conta
-- [ ] H2 sem H1 produz `O3` (cláusula fechada no ADR-0006 em 2026-10-18)
-- [ ] `O4` tem precedência: uma tabela com H2 em maioria e `A` perdendo para o sem_grafo em ≥ 4 devolve `O4`
-- [ ] H3 não altera o desfecho: duas tabelas iguais exceto por H3 devolvem o mesmo código
-- [ ] Splits com desfechos diferentes marcam `discordancia = True` e a saída diz que a afirmação principal se restringe ao que se replica
-- [ ] Gate check passes: `$PY -m pytest tests/test_veredito_atencao.py -q`
-- [ ] Test count: ≥ 12 tests pass in total (no silent deletions)
+- [x] Quatro tabelas sintéticas produzem exatamente O1, O2, O3 e O4 (uma por desfecho), e 3 de 6 vitórias **não** conta como maioria enquanto 4 de 6 conta
+- [x] H2 sem H1 produz `O3` (cláusula fechada no ADR-0006 em 2026-10-18)
+- [x] `O4` tem precedência: uma tabela com H2 em maioria e `A` perdendo para o sem_grafo em ≥ 4 devolve `O4`
+- [x] H3 não altera o desfecho: duas tabelas iguais exceto por H3 devolvem o mesmo código
+- [x] Splits com desfechos diferentes marcam `discordancia = True` e a saída diz que a afirmação principal se restringe ao que se replica
+- [x] Gate check passes: `$PY -m pytest tests/test_veredito_atencao.py -q`
+- [x] Test count: ≥ 12 tests pass in total (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick

@@ -12,7 +12,9 @@ import pytest
 from music_diffusion_gnn.evaluation.stats import holm_correction, paired_by_song
 from music_diffusion_gnn.evaluation.veredito_atencao import (
     CONTRASTS,
+    MAJORITY,
     TREATED,
+    classify_outcome,
     compare_models,
     verdict,
 )
@@ -123,3 +125,85 @@ def test_missing_model_raises_naming_it(missing):
     p = _preds(splits=("current",), n_songs=10, origins=1)
     with pytest.raises(ValueError, match=missing):
         compare_models(p[p.modelo != missing], B=B, seed=1)
+
+
+# ------------------------------------------------------------ T7: classify_outcome
+
+def _labels(n_vence=0, n_perde=0):
+    """Six cell labels: ``n_vence`` wins, ``n_perde`` losses, the rest inconclusive."""
+    return ["vence"] * n_vence + ["perde"] * n_perde + ["inconclusivo"] * (6 - n_vence - n_perde)
+
+
+def _table(split="current", *, h1=(0, 0), h2=(0, 0), h3=(0, 0)):
+    """Synthetic compare_models output for one split; each hN is (wins, losses)."""
+    cells = [(c, k) for c in CHARTS for k in KS]
+    rows = []
+    for hyp, (w, lo) in (("H1", h1), ("H2", h2), ("H3", h3)):
+        for (c, k), lab in zip(cells, _labels(w, lo)):
+            rows.append({"split_regime": split, "chart": c, "k": k, "hipotese": hyp,
+                         "contraste": CONTRASTS[hyp], "rotulo": lab})
+    return pd.DataFrame(rows)
+
+
+def _outcome(t):
+    return classify_outcome(t).set_index("split_regime")["desfecho"].to_dict()
+
+
+def test_majority_is_four_of_six():
+    assert MAJORITY == 4
+
+
+@pytest.mark.parametrize("h1, h2, expected", [
+    ((4, 0), (4, 0), "O1"),
+    ((6, 0), (5, 0), "O1"),
+    ((4, 0), (3, 0), "O2"),
+    ((5, 0), (0, 2), "O2"),
+    ((3, 0), (3, 0), "O3"),
+    ((0, 3), (0, 0), "O3"),
+    ((0, 4), (0, 0), "O4"),
+])
+def test_each_outcome_from_a_synthetic_table(h1, h2, expected):
+    assert _outcome(_table(h1=h1, h2=h2)) == {"current": expected}
+
+
+def test_three_of_six_wins_is_not_a_majority_and_four_is():
+    assert _outcome(_table(h1=(3, 0), h2=(4, 0))) == {"current": "O3"}
+    assert _outcome(_table(h1=(4, 0), h2=(4, 0))) == {"current": "O1"}
+    assert _outcome(_table(h1=(4, 0), h2=(3, 0))) == {"current": "O2"}
+
+
+def test_h2_without_h1_is_o3():
+    assert _outcome(_table(h1=(2, 0), h2=(6, 0))) == {"current": "O3"}
+
+
+def test_o4_takes_precedence_over_h2_majority():
+    assert _outcome(_table(h1=(0, 4), h2=(5, 0))) == {"current": "O4"}
+
+
+def test_h3_does_not_change_the_outcome():
+    for h1, h2 in [((4, 0), (4, 0)), ((4, 0), (0, 0)), ((1, 0), (1, 0)), ((0, 5), (0, 0))]:
+        assert _outcome(_table(h1=h1, h2=h2, h3=(6, 0))) == _outcome(
+            _table(h1=h1, h2=h2, h3=(0, 6)))
+
+
+def test_counts_are_reported_per_split():
+    out = classify_outcome(_table(h1=(4, 1), h2=(2, 3), h3=(1, 0))).iloc[0]
+    assert (out.vitorias_h1, out.derrotas_h1, out.vitorias_h2, out.vitorias_h3) == (4, 1, 2, 1)
+
+
+def test_agreeing_splits_have_no_discordance():
+    t = pd.concat([_table("current", h1=(4, 0)), _table("pre_pandemia", h1=(5, 0))])
+    out = classify_outcome(t)
+    assert out.desfecho.tolist() == ["O2", "O2"]
+    assert not out.discordancia.any()
+    assert (out.afirmacao_principal == "O2").all()
+
+
+def test_disagreeing_splits_flag_discordance_and_restrict_the_main_claim():
+    t = pd.concat([_table("current", h1=(4, 0), h2=(4, 0)), _table("pre_pandemia", h1=(1, 0))])
+    out = classify_outcome(t).set_index("split_regime")
+    assert out.loc["current", "desfecho"] == "O1"
+    assert out.loc["pre_pandemia", "desfecho"] == "O3"
+    assert out.discordancia.all()
+    assert (out.afirmacao_principal == "restrita ao que se replica").all()
+    assert "replica" in out.loc["current", "nota"]

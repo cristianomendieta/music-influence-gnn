@@ -23,6 +23,17 @@ CHARTS = ("viral50", "top200")
 KS = (1, 2, 4)
 N_CELLS = len(CHARTS) * len(KS)              # 6 cells per split
 FAMILY_SIZE = N_CELLS * len(CONTRASTS)       # 18 comparisons per split, one Holm family
+MAJORITY = 4                                 # "Maioria" = 4 of 6 cells
+
+# What the dissertation says under each outcome (ADR-0006, table "O que a dissertação passa a dizer").
+OUTCOMES = {
+    "O1": "H1 e H2 em maioria: o nulo era do encoder; com atenção a topologia paga",
+    "O2": "H1 em maioria, H2 não: o ganho vem de agregar atributos dos vizinhos, não da topologia",
+    "O3": "H1 não está em maioria e A não perde em maioria: o nulo é robusto à arquitetura",
+    "O4": "A perde para o sem_grafo em maioria: a atenção prejudica",
+}
+DISCORDANCE_NOTE = ("os splits discordam: a discordância é o resultado e a afirmação principal "
+                    "fica restrita ao que se replica")
 
 _KEYS = ["song_id", "chart", "origin_week", "k", "split_regime"]
 
@@ -81,3 +92,36 @@ def compare_models(preds: pd.DataFrame, *, B: int = 10_000, seed: int = 42) -> p
         table.loc[grp.index, "p_holm"] = holm_correction(grp["p_value"].to_numpy())
     table["rotulo"] = [verdict(r.ci_lo, r.ci_hi, r.p_holm) for r in table.itertuples()]
     return table
+
+
+def classify_outcome(table: pd.DataFrame) -> pd.DataFrame:
+    """Outcome O1 to O4 per split from a :func:`compare_models` table.
+
+    O4 first (``A`` loses to ``sem_grafo`` in at least 4 of 6 cells); else O1 if H1
+    and H2 win in at least 4; else O2 if only H1 does; else O3 (which includes H2
+    without H1). H3 is counted but never decides. ``discordancia`` is True on every
+    row when the splits disagree; ``afirmacao_principal`` is then
+    ``"restrita ao que se replica"`` instead of the shared outcome code.
+    """
+    rows = []
+    for split, grp in table.groupby("split_regime", sort=True):
+        n = grp.groupby(["hipotese", "rotulo"]).size()
+        h1, h2, h3 = (int(n.get((h, "vence"), 0)) for h in CONTRASTS)
+        h1_loss = int(n.get(("H1", "perde"), 0))
+        if h1_loss >= MAJORITY:
+            code = "O4"
+        elif h1 >= MAJORITY and h2 >= MAJORITY:
+            code = "O1"
+        elif h1 >= MAJORITY:
+            code = "O2"
+        else:
+            code = "O3"
+        rows.append({"split_regime": split, "vitorias_h1": h1, "derrotas_h1": h1_loss,
+                     "vitorias_h2": h2, "vitorias_h3": h3,
+                     "desfecho": code, "afirmacao": OUTCOMES[code]})
+    out = pd.DataFrame(rows)
+    discord = out["desfecho"].nunique() > 1
+    out["discordancia"] = discord
+    out["afirmacao_principal"] = "restrita ao que se replica" if discord else out["desfecho"]
+    out["nota"] = DISCORDANCE_NOTE if discord else ""
+    return out
