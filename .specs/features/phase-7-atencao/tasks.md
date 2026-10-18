@@ -399,13 +399,13 @@ O P3 (ablação por tipo de aresta no `A`, ATT-07) **não entra**: depende do de
 
 **Done when**:
 
-- [ ] Os `mode2_*_completo.parquet` e `mode2_*_teto_treino.parquet` têm as colunas `variante`, `split_regime`, `seed`, `song_id`, `chart`, `origin_week`, `k`, `y_true`, `y_pred`, `onchart`, `orcamento_arestas`, e `variante` vale `atencao` ou `atencao_emb`
-- [ ] As origens são exatamente as de `origens_{regime}.parquet` do item 09 (conferência de contagem: 141.504 no `current` e 53.982 no `pre_pandemia` por modelo, somando os horizontes)
-- [ ] O notebook carrega cada checkpoint pelos metadados gravados (T5), sem constantes de configuração repetidas
-- [ ] A leitura `completo` é a principal; a `teto_treino` roda em todas as seeds (o item 09 a fez só na seed 42) ou o notebook declara que só rodou em uma
-- [ ] O notebook não tem saída gravada e compila
-- [ ] Gate check passes: `$PY scripts/check_notebook.py notebooks/item15c_avaliacao_atencao_colab.ipynb --forbid`
-- [ ] Test count: all unit tests of T1 to T8 still pass (no silent deletions)
+- [x] Os `mode2_*_completo.parquet` e `mode2_*_teto_treino.parquet` têm as colunas `variante`, `split_regime`, `seed`, `song_id`, `chart`, `origin_week`, `k`, `y_true`, `y_pred`, `onchart`, `orcamento_arestas`, e `variante` vale `atencao` ou `atencao_emb`
+- [x] As origens são exatamente as de `origens_{regime}.parquet` do item 09 (conferência de contagem: 141.504 no `current` e 53.982 no `pre_pandemia` por modelo, somando os horizontes)
+- [x] O notebook carrega cada checkpoint pelos metadados gravados (T5), sem constantes de configuração repetidas
+- [x] A leitura `completo` é a principal; a `teto_treino` roda em todas as seeds (o item 09 a fez só na seed 42) ou o notebook declara que só rodou em uma
+- [x] O notebook não tem saída gravada e compila
+- [x] Gate check passes: `$PY scripts/check_notebook.py notebooks/item15c_avaliacao_atencao_colab.ipynb --forbid`
+- [x] Test count: all unit tests of T1 to T8 still pass (no silent deletions)
 
 **Tests**: none
 **Gate**: build
