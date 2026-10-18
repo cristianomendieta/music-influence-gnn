@@ -240,6 +240,15 @@ def test_three_equal_seeds_agree_three_of_three_in_every_cell():
     assert (outcomes.seeds_concordam == 3).all()
 
 
+def test_n_seeds_counts_only_the_seeds_that_had_the_cell():
+    preds = _seeds({42: None, 43: None, 44: None})
+    preds = preds[~((preds.seed == 44) & (preds.split_regime == "pre_pandemia"))]
+    main = compare_models(preds[preds.seed == 42].drop(columns="seed"), B=B, seed=1)
+    cells, _ = sensitivity_by_seed(preds, main, B=B, seed=1)
+    assert (cells[cells.split_regime == "pre_pandemia"].n_seeds == 2).all()
+    assert (cells[cells.split_regime == "current"].n_seeds == 3).all()
+
+
 def test_one_inverted_seed_agrees_two_of_three():
     preds = _seeds({42: None, 43: None, 44: INVERTED})
     main = compare_models(_preds(n_songs=30, origins=1, seed=0), B=B, seed=1)
