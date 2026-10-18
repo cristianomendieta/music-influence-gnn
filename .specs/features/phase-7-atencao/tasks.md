@@ -459,11 +459,11 @@ O P3 (ablação por tipo de aresta no `A`, ATT-07) **não entra**: depende do de
 
 **Done when**:
 
-- [ ] Atenção uniforme em `d` vizinhos dá entropia normalizada 1; atenção concentrada num só vizinho dá 0; grau 1 dá 0 por convenção documentada (log de 1 não normaliza)
-- [ ] A entropia é invariante à ordem das arestas de entrada
-- [ ] `entropy_by_degree` devolve uma linha por faixa de grau com a contagem de nós, e a soma das contagens é o número de nós com ao menos uma aresta
-- [ ] Gate check passes: `$PY -m pytest tests/test_attention_stats.py -q`
-- [ ] Test count: ≥ 5 tests pass (no silent deletions)
+- [x] Atenção uniforme em `d` vizinhos dá entropia normalizada 1; atenção concentrada num só vizinho dá 0; grau 1 dá 0 por convenção documentada (log de 1 não normaliza)
+- [x] A entropia é invariante à ordem das arestas de entrada
+- [x] `entropy_by_degree` devolve uma linha por faixa de grau com a contagem de nós, e a soma das contagens é o número de nós com ao menos uma aresta
+- [x] Gate check passes: `$PY -m pytest tests/test_attention_stats.py -q`
+- [x] Test count: ≥ 5 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
