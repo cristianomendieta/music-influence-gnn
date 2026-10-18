@@ -338,14 +338,14 @@ O P3 (ablação por tipo de aresta no `A`, ATT-07) **não entra**: depende do de
 
 **Done when**:
 
-- [ ] O notebook roda a suíte `tests/test_phase7_*.py` numa célula inicial **como conferência** (como a célula 10 do item 06), e o passo seguinte só usa grafo real depois dessa célula
-- [ ] Um teste de invariância às colunas brutas de `edge_attr` roda no **grafo real** antes do primeiro treino e aborta o notebook se falhar (portão de vazamento do ADR-0006)
-- [ ] Cada configuração é retomável por arquivo no Drive, e uma sessão nova pula as que existem
-- [ ] A tabela de 8 linhas (`val_mse`, `n_params`) é gravada antes da escolha, e `check_param_budget` roda em todas
-- [ ] O notebook aplica a regra de empate (diferença de `val_mse` ≤ 0,000003, um desvio entre seeds medido no item 06) escolhendo a configuração de menos parâmetros, e registra quando ela decide
-- [ ] O notebook não tem saída gravada e compila
-- [ ] Gate check passes: `$PY scripts/check_notebook.py notebooks/item15a_ajuste_atencao_colab.ipynb --forbid`
-- [ ] Test count: all unit tests of T1 to T8 still pass (no silent deletions)
+- [x] O notebook roda a suíte `tests/test_phase7_*.py` numa célula inicial **como conferência** (como a célula 10 do item 06), e o passo seguinte só usa grafo real depois dessa célula
+- [x] Um teste de invariância às colunas brutas de `edge_attr` roda no **grafo real** antes do primeiro treino e aborta o notebook se falhar (portão de vazamento do ADR-0006)
+- [x] Cada configuração é retomável por arquivo no Drive, e uma sessão nova pula as que existem
+- [x] A tabela de 8 linhas (`val_mse`, `n_params`) é gravada antes da escolha, e `check_param_budget` roda em todas
+- [x] O notebook aplica a regra de empate (diferença de `val_mse` ≤ 0,000003, um desvio entre seeds medido no item 06) escolhendo a configuração de menos parâmetros, e registra quando ela decide
+- [x] O notebook não tem saída gravada e compila
+- [x] Gate check passes: `$PY scripts/check_notebook.py notebooks/item15a_ajuste_atencao_colab.ipynb --forbid`
+- [x] Test count: all unit tests of T1 to T8 still pass (no silent deletions)
 
 **Tests**: none
 **Gate**: build
