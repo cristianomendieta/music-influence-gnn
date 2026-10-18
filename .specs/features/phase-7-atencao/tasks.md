@@ -325,7 +325,7 @@ O P3 (ablação por tipo de aresta no `A`, ATT-07) **não entra**: depende do de
 
 ### T9: Notebook do ajuste das 8 configurações
 
-**What**: `notebooks/item15a_ajuste_atencao_colab.ipynb` treina as 8 configurações (`heads` {2,4} × `attn_dropout` {0, 0,2} × `lr` {5e-4, 1e-3}, `hidden=128`) em `current`/seed 42, grava `val_mse` e parâmetros de cada uma antes de qualquer avaliação em teste, escolhe a de menor `val_mse` (empate dentro da dispersão: a de menos parâmetros) e grava `config_escolhida.json`.
+**What**: `notebooks/item15a_ajuste_atencao_colab.ipynb` treina as 8 configurações (`heads` {2,4} × `attn_dropout` {0, 0,2} × `lr` {5e-4, 1e-3}, `hidden=112`, emenda de 2026-10-18 ao ADR-0006) em `current`/seed 42, grava `val_mse` e parâmetros de cada uma antes de qualquer avaliação em teste, escolhe a de menor `val_mse` (empate dentro da dispersão: a de menos parâmetros) e grava `config_escolhida.json`.
 **Where**: `notebooks/item15a_ajuste_atencao_colab.ipynb`
 **Depends on**: T5
 **Reuses**: células de setup, de dados e de retomada de `notebooks/item06_08_escada_treinos_colab.ipynb`; `Config`, `train_one`, `check_param_budget`
@@ -431,7 +431,7 @@ O P3 (ablação por tipo de aresta no `A`, ATT-07) **não entra**: depende do de
 
 - [x] A primeira célula de texto reproduz a tabela O1 a O4 e a regra de maioria do ADR-0006 **antes** de qualquer célula que leia resultado
 - [x] O desfecho sai por split, com a discordância destacada quando existir, e cada seed isolada aparece na tabela de sensibilidade
-- [x] O relatório traz parâmetros do `A` contra 453.121 e "8 contra 24 configurações" como limitação
+- [x] O relatório traz parâmetros do `A` contra 453.121 e "8 contra 24 configurações" como limitação, e o `hidden` do `A` (112, emenda de 2026-10-18 ao ADR-0006) contra o da proposta SAGE (128)
 - [x] O notebook não recalcula nada que o ADR fixou (limiares, família, contrastes são importados do módulo, não digitados)
 - [x] O notebook escreve `results/atencao/veredito.parquet` e `relatorio.md` e não tem saída gravada
 - [x] Gate check passes: `$PY scripts/check_notebook.py notebooks/item15d_veredito_atencao_colab.ipynb --forbid`

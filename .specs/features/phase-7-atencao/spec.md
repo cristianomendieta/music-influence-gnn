@@ -36,9 +36,9 @@ A GNN com `HeteroGraphSAGE` não supera o baseline sem grafo nem o grafo embaral
 | Variante principal | `GATv2Conv` por relação dentro de um `HeteroConv`/laço próprio, `add_self_loops=False`, mais termo raiz por tipo de nó | Lê `edge_attr`, devolve pesos (`return_attention_weights`), e sem arestas colapsa no sem_grafo | y |
 | Atributos de aresta | `chart` de origem e `log1p(w − first_seen_week)` apenas | As colunas brutas vazam o futuro. Estas duas são calculáveis no snapshot de `w` | y |
 | Relações sem `edge_attr` causal (`performs`, `has_genre`, `rev_has_genre`, `cooccurs`) | Atenção só por conteúdo (`edge_dim=None`) | `cooccurs` tem `weight` vindo da rede de gêneros (`graph/edges.py:301`); a restrição causal dele não foi auditada, então não entra | y |
-| Grade de ajuste | 8 configs: heads {2,4} × dropout de atenção {0, 0,2} × lr {5e-4, 1e-3}, `hidden=128`, seleção por `val_mse` em `current`/seed 42 | Fixa antes do teste. Menor que as 24 da proposta, e isso é limitação declarada | y |
+| Grade de ajuste | 8 configs: heads {2,4} × dropout de atenção {0, 0,2} × lr {5e-4, 1e-3}, `hidden=112` no encoder de atenção (emenda de 2026-10-18 ao ADR-0006; a proposta SAGE fica com 128), seleção por `val_mse` em `current`/seed 42 | Fixa antes do teste. Menor que as 24 da proposta, e isso é limitação declarada | y |
 | Empate no ajuste | Diferença de `val_mse` ≤ 0,000003 conta como empate e vence a configuração com menos parâmetros | O desvio entre seeds da proposta SAGE no item 06 foi de 0,000002 a 0,000004; o limiar fica fixado antes de ver a grade | y |
-| Orçamento de parâmetros | Dentro de ±10% dos 453.121 do SAGE; o número exato é declarado | Comparabilidade; fora disso muda-se o canal por cabeça, não os `heads` | y |
+| Orçamento de parâmetros | Dentro de ±10% dos 453.121 do SAGE; o número exato é declarado | Comparabilidade; fora disso muda-se o canal por cabeça, não os `heads`. Com o termo raiz, `hidden=128` dá 561.537 (+23,9%) para qualquer `heads`; por isso o encoder de atenção usa `hidden=112` (432.209, −4,6%), emenda de 2026-10-18 ao ADR-0006 | y |
 | Controle de topologia | `A-emb` reutiliza `rewire_preserving_degree` e fica com `edge_attr` alinhado à aresta original | Preserva a marginal dos atributos e destrói só o par; `idade` e `chart` continuam coerentes com `first_seen_week` | y |
 | Referência sem grafo | O sem_grafo SAGE existente | Mesma classe funcional do `A` sem arestas. O teste mapeia os pesos: `W_raiz,t = Σ_r lin_r` das relações que chegam ao tipo `t`, `b_raiz,t = Σ_r b_lin_l`. Paridade de função, não de otimização | y |
 | Orçamento de arestas na avaliação | Duas leituras: grafo completo (principal) e `teto_treino` | Mesma regra do ticket 08 | y |
@@ -103,7 +103,7 @@ A GNN com `HeteroGraphSAGE` não supera o baseline sem grafo nem o grafo embaral
 3. WHEN H1 e H2 estão em maioria (≥ 4 de 6) THEN the system SHALL declarar O1; WHEN só H1 THEN O2; WHEN nenhuma das duas e `A` não perde em maioria THEN O3; WHEN `A` perde para o sem_grafo em maioria THEN O4.  <!-- event-driven -->
 4. IF os dois splits levam a desfechos diferentes THEN the system SHALL reportar a discordância como resultado e restringir a afirmação principal ao que se replica.  <!-- unwanted-behavior -->
 5. WHEN o veredito é calculado THEN the system SHALL repetir H1 a H3 em cada seed isolada e reportar a concordância com o teste sobre a média.  <!-- event-driven -->
-6. The system SHALL reportar o orçamento de ajuste (8 contra 24 configurações) e o número de parâmetros no mesmo bloco da tabela de resultados.  <!-- ubiquitous -->
+6. The system SHALL reportar o orçamento de ajuste (8 contra 24 configurações), o número de parâmetros e o `hidden` do `A` (112) contra o da proposta SAGE (128), como limitação, no mesmo bloco da tabela de resultados.  <!-- ubiquitous -->
 
 **Independent Test**: `veredito_adr0006.parquet` tem uma linha por (split, contraste) com o desfecho, e cada rótulo é recomputável a partir de `testes_pareados`.
 

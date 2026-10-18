@@ -61,11 +61,26 @@ comparabilidade com o item 10).
 ### Ajuste de hiperparâmetros (igual para todos)
 
 Grade fixa de 8 configurações: `heads ∈ {2, 4}` × dropout de atenção `∈ {0, 0,2}` × `lr ∈
-{5e-4, 1e-3}`, com `hidden = 128` (canais por cabeça = `128/heads`, o que mantém o orçamento perto de
-453.121 parâmetros; a diferença exata é declarada). Seleção por `val_mse` no split `current`,
+{5e-4, 1e-3}`, com `hidden = 112` no encoder de atenção (canais por cabeça = `112/heads`, o que
+põe o modelo inteiro em 432.209 parâmetros, dentro de ±10% dos 453.121 da proposta SAGE; a
+diferença exata é declarada). Seleção por `val_mse` no split `current`,
 seed 42. A configuração escolhida vale para os dois splits, as três seeds e o `A-emb`. A proposta
 SAGE teve 24 configurações; a atenção tem 8, e isso é uma limitação declarada, não uma
 vantagem escondida. Nenhuma outra variação é feita depois de ver o teste.
+
+> Emenda de 2026-10-18, antes de qualquer treino: a versão aceita dizia `hidden = 128` (canais por
+> cabeça = `128/heads`). Contado nas larguras reais das features (música 12 + 2 canais de
+> popularidade, artista 1, gênero 4, os cinco tipos de aresta, `layers = 3`), o modelo de atenção
+> com `hidden = 128` tem 561.537 parâmetros (+23,9%), fora da faixa de 407.808 a 498.433, e isso
+> vale para `heads = 2` e `heads = 4`: com `concat=True` cada `GATv2Conv` projeta para `128`
+> canais qualquer que seja `heads`, e o termo raiz por tipo de nó soma-se aos dois lineares por
+> relação que já igualam os do SAGE. Mudar os `heads` não move a contagem, e `share_weights=True`
+> não serve (as relações bipartidas da camada 0 têm larguras de origem e destino diferentes). O
+> critério de justiça é o orçamento de **parâmetros**, não o `hidden`; por isso o encoder de
+> atenção (`A` e `A-emb`) passa a `hidden = 112`, que dá 432.209 parâmetros (−4,6%) para os dois
+> valores de `heads`. A grade (`heads` × dropout de atenção × `lr`), a faixa de ±10% em torno de
+> 453.121 e todo o resto ficam iguais; a proposta SAGE continua com `hidden = 128`. O `hidden`
+> menor do `A` em relação à proposta SAGE é limitação declarada no relatório.
 
 ### Hipóteses e família estatística
 
