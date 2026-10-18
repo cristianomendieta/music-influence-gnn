@@ -105,6 +105,9 @@ def test_vence_requires_whole_ci_below_zero_and_holm_p_below_005():
     assert verdict(-0.3, 0.1, 0.001) == "inconclusivo"   # CI crosses zero
     assert verdict(0.1, 0.3, 0.01) == "perde"
     assert verdict(0.1, 0.3, 0.2) == "inconclusivo"
+    # ADR-0006: "IC inteiro abaixo de zero": a CI that ends exactly at zero is not whole below it
+    assert verdict(-0.3, 0.0, 0.01) == "inconclusivo"
+    assert verdict(0.0, 0.3, 0.01) == "inconclusivo"
 
 
 def test_labels_of_the_table_follow_the_rule():
@@ -269,3 +272,7 @@ def test_budget_block_states_both_param_counts_and_the_tuning_budget():
     assert "431.250" in text
     assert "453.121" in text
     assert "8 contra 24 configurações" in text
+
+
+def test_budget_block_gives_the_relative_difference_the_adr_states():
+    assert "-4.6%" in budget_block(432_209)   # ADR-0006 amendment: 432.209, -4,6% against 453.121
