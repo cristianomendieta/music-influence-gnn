@@ -487,12 +487,12 @@ O P3 (ablação por tipo de aresta no `A`, ATT-07) **não entra**: depende do de
 
 **Done when**:
 
-- [ ] Toda figura traz a legenda "descritiva: atenção não é explicação" e remete à ablação por tipo de aresta como medida causal
-- [ ] O cruzamento com o tercil de grau só roda se o arquivo do estrato por grau (Phase 6b, MAP-08) existir, e diz que pulou quando não existe
-- [ ] Os pesos vêm de `A` e `A-emb` com os mesmos nós e semanas, para comparação direta
-- [ ] O notebook não tem saída gravada e compila
-- [ ] Gate check passes: `$PY scripts/check_notebook.py notebooks/item15e_pesos_atencao_colab.ipynb --forbid`
-- [ ] Test count: all unit tests of T1 to T13 still pass (no silent deletions)
+- [x] Toda figura traz a legenda "descritiva: atenção não é explicação" e remete à ablação por tipo de aresta como medida causal
+- [x] O cruzamento com o tercil de grau só roda se o arquivo do estrato por grau (Phase 6b, MAP-08) existir, e diz que pulou quando não existe
+- [x] Os pesos vêm de `A` e `A-emb` com os mesmos nós e semanas, para comparação direta
+- [x] O notebook não tem saída gravada e compila
+- [x] Gate check passes: `$PY scripts/check_notebook.py notebooks/item15e_pesos_atencao_colab.ipynb --forbid`
+- [x] Test count: all unit tests of T1 to T13 still pass (no silent deletions)
 
 **Tests**: none
 **Gate**: build
