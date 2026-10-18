@@ -147,7 +147,7 @@ O P3 (ablação por tipo de aresta no `A`, ATT-07) **não entra**: depende do de
 
 ---
 
-### T3: Pesos de atenção e orçamento de parâmetros do encoder
+### T3: Pesos de atenção e contagem de parâmetros do encoder
 
 **What**: `HeteroAttentionEncoder.forward(..., return_attention=True)` devolve também, por relação e por camada, `(edge_index, alpha)`; `count_params()` conta só parâmetros já inicializados, como em `MusicDiffusionGNN.count_params`.
 **Where**: `src/music_diffusion_gnn/models/attention_encoder.py` (modify)
@@ -208,7 +208,7 @@ O P3 (ablação por tipo de aresta no `A`, ATT-07) **não entra**: depende do de
 
 ### T5: Config, treino e checkpoint com metadados e aborto fora do orçamento
 
-**What**: `Config` ganha `encoder`, `heads`, `attn_dropout`; `train_one` os repassa ao modelo; `check_param_budget(n_params, ref=453_121, tol=0.10)` aborta o treino fora da faixa; o checkpoint grava encoder, heads, atenção, variante e versão do grafo.
+**What**: `Config` ganha `encoder`, `heads`, `attn_dropout`; `train_one` os repassa ao modelo; `check_param_budget(n_params, ref=453_121, tol=0.10)` lança erro quando a contagem do modelo inteiro (encoder + cabeça temporal) fica fora da faixa (quem aborta o treino são os notebooks 15a e 15b, que o chamam antes de cada treino; `train_one` não o chama); o checkpoint grava encoder, heads, atenção, variante e versão do grafo.
 **Where**: `src/music_diffusion_gnn/training/trainer.py` (modify)
 **Depends on**: T4
 **Reuses**: `Config.__str__`, `TrainResult.n_params`, o formato de checkpoint de `item06_08_escada_treinos_colab.ipynb` (célula 14)
@@ -341,7 +341,7 @@ O P3 (ablação por tipo de aresta no `A`, ATT-07) **não entra**: depende do de
 - [x] O notebook roda a suíte `tests/test_phase7_*.py` numa célula inicial **como conferência** (como a célula 10 do item 06), e o passo seguinte só usa grafo real depois dessa célula
 - [x] Um teste de invariância às colunas brutas de `edge_attr` roda no **grafo real** antes do primeiro treino e aborta o notebook se falhar (portão de vazamento do ADR-0006)
 - [x] Cada configuração é retomável por arquivo no Drive, e uma sessão nova pula as que existem
-- [x] A tabela de 8 linhas (`val_mse`, `n_params`) é gravada antes da escolha, e `check_param_budget` roda em todas
+- [x] A tabela de 8 linhas (`val_mse`, `n_params`) é gravada antes da escolha, e `check_param_budget` roda em todas (sobre o modelo inteiro, aquecido por um forward, antes de cada treino)
 - [x] O notebook aplica a regra de empate (diferença de `val_mse` ≤ 0,000003, um desvio entre seeds medido no item 06) escolhendo a configuração de menos parâmetros, e registra quando ela decide
 - [x] O notebook não tem saída gravada e compila
 - [x] Gate check passes: `$PY scripts/check_notebook.py notebooks/item15a_ajuste_atencao_colab.ipynb --forbid`
@@ -371,7 +371,7 @@ O P3 (ablação por tipo de aresta no `A`, ATT-07) **não entra**: depende do de
 
 - [x] O notebook aborta com mensagem clara se `config_escolhida.json` não existir ou se a configuração mudar depois de criada (hash gravado no JSON)
 - [x] O plano lista exatamente 12 treinos (`A`, `A-emb` × `current`, `pre_pandemia` × 42, 43, 44) e cada checkpoint grava regime, seed, variante, configuração, versão do grafo e `graph_seed` do embaralhado
-- [x] O orçamento de parâmetros é impresso e `check_param_budget` roda em cada treino; o notebook compara com a proposta SAGE (453.121) numa célula
+- [x] O orçamento de parâmetros (modelo inteiro) é impresso e `check_param_budget` roda antes de cada treino; o notebook compara com a proposta SAGE (453.121) numa célula
 - [x] IF a perda vira NaN numa seed THEN o notebook registra a falha, repete uma vez com outra inicialização e grava as duas tentativas (edge case da spec)
 - [x] O notebook não tem saída gravada e compila
 - [x] Gate check passes: `$PY scripts/check_notebook.py notebooks/item15b_treinos_atencao_colab.ipynb --forbid`

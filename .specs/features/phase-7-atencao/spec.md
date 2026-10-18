@@ -64,7 +64,7 @@ A GNN com `HeteroGraphSAGE` não supera o baseline sem grafo nem o grafo embaral
 3. WHEN as colunas `days_together` e `avg_position_distance` de `edge_attr` são perturbadas THEN the system SHALL devolver embeddings idênticos aos originais.  <!-- event-driven; portão de vazamento -->
 4. WHEN o grafo tem todas as arestas removidas (`strip_all_edges`) THEN the system SHALL devolver o mesmo embedding de música que o `HeteroSpatialEncoder` com os mesmos pesos do ramo raiz.  <!-- event-driven; paridade com o sem_grafo -->
 5. WHEN `return_attention_weights` é pedido THEN the system SHALL devolver, por relação, pesos de atenção que somam 1 por nó de destino com ao menos uma aresta de entrada.  <!-- event-driven -->
-6. The system SHALL reportar o número de parâmetros do encoder e abortar o treino se ele ficar fora de ±10% de 453.121.  <!-- ubiquitous -->
+6. The system SHALL reportar o número de parâmetros do **modelo inteiro** (encoder + cabeça temporal, `MusicDiffusionGNN.count_params()` depois de um forward, a mesma contagem dos 453.121 da proposta SAGE) e abortar o treino se ele ficar fora de ±10% de 453.121. O aborto é feito pelos notebooks (15a e 15b), que chamam `check_param_budget` antes de cada treino, não por `train_one`.  <!-- ubiquitous -->
 7. IF uma relação não tem aresta no snapshot THEN the system SHALL omitir sua contribuição sem lançar erro e sem devolver `None` para o tipo de nó.  <!-- unwanted-behavior -->
 
 **Independent Test**: `pytest tests/test_phase7_encoder.py` com um grafo sintético pequeno; o teste 3 falha de propósito se o encoder ler a coluna bruta.
